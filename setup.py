@@ -7,5 +7,7 @@ setup(
     description="A package with data related helper functions.",
     name="pytoolkit",
     packages=find_packages(include=["pytoolkit", "pytoolkit.*"]),
+    install_requires=['numpy>=1.22', 'pandas>=1.5'],
+    python_requires='>=3.9',
     version="0.1.0",
 )

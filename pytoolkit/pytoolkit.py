@@ -15,7 +15,7 @@ def g(obj):
        
     Example:
     --------
-    from pytoolkit import g
+    from pytoolkit.pytoolkit import g
     from sklearn.tree import DecisionTreeClassifier
     clf = DecisionTreeClassifier()
     atr = g(clf)
