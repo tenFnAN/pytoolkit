@@ -180,7 +180,7 @@ def num_vars(data, exclude_var=None):
     >> iris = sns.load_dataset('iris')
     >> num_vars(iris)
     """
-    num_v = data.select_dtypes(include=['int64', 'float64']).columns
+    num_v = data.select_dtypes(include=['number', 'int64', 'float64']).columns
     if exclude_var is not None: 
         num_v=num_v.drop(exclude_var)
     return num_v
