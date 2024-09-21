@@ -161,6 +161,40 @@ def status(data):
     
     return(d2)
 
+def unique(data):
+    """
+    Create a summary DataFrame with the count of unique values and 
+    a comma-separated string of unique values for each column in the input DataFrame.
+
+    Args:
+        data (pd.DataFrame): The input DataFrame to summarize.
+
+    Returns:
+        pd.DataFrame: A DataFrame with the columns:
+            - 'variable': The column name from the input DataFrame.
+            - 'n': The count of unique values in that column.
+            - 'uniq': A comma-separated string of unique values sorted in ascending order.
+            
+    Example:
+        data = pd.DataFrame({
+            'A': [1, 2, 2, 1],
+            'B': ['x', 'y', 'x', 'y'],
+            'C': [5.5, 6.6, 5.5, 6.6]
+        })
+        result = unique(data)
+        print(result)
+        
+        Output:
+            variable  n           uniq
+        0        A  2           1, 2
+        1        B  2           x, y
+        2        C  2      5.5, 6.6
+    """
+    df_uniq = (data.melt().drop_duplicates().groupby('variable', as_index=False)
+    .agg(n = ('value', 'nunique'), uniq = ('value', lambda x:','.join(map(str, sorted(x.unique())))) )
+    .sort_values('n'))
+    return df_uniq
+
 def num_vars(data, exclude_var=None):
     """
     Returns the numeric variable names. Useful to use with pipelines or any other method in which we need to keep numeric variables. It `exclude_var` can be a list with the variable names to skip in the result. Useful when we want to skip the target variable (i.e. in a data transformation).
