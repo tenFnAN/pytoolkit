@@ -1,9 +1,12 @@
 import pandas as pd
 import numpy as np  
-import seaborn as sns
-from pandas.plotting import parallel_coordinates
-from sklearn.preprocessing import MinMaxScaler
+
 import matplotlib.pyplot as plt
+import seaborn as sns 
+from pandas.plotting import parallel_coordinates
+
+from sklearn.preprocessing import MinMaxScaler
+import scipy.stats as st
 
 import inspect
 
