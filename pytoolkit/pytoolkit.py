@@ -6,8 +6,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns 
 from pandas.plotting import parallel_coordinates
 import plotly.express as px
+import plotnine as ggplot
 
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 import scipy.stats as st
@@ -336,7 +337,7 @@ def feat_cor(data, method='pearson'):
 
     return(d_long2)
 
-def feat_cor_heatmap(data_corr, figsize=(12, 11)):
+def feat_cor_heatmap(data_corr, target= None, figsize=(12, 11)):
     """
     Generate a heatmap to visualize the correlation between features.
 
@@ -361,10 +362,75 @@ def feat_cor_heatmap(data_corr, figsize=(12, 11)):
     >>> feat_cor_heatmap(data)
     """
     data_corr = feat_cor(data_corr).loc[:, ['v1', 'v2', 'R']].pivot(index='v1', columns='v2', values='R').fillna(0)
+    if target is not None:
+        data_corr = data_corr.sort_values(target)
     plt.figure(figsize=figsize)
     sns.heatmap(data_corr, annot=True, fmt=".2f", annot_kws={"size": 5})
     plt.show()
+
+def plot_pca_features(data, col_pca, col_features, squish_lwr=0.01, squish_upr=0.99, engine='ggplot', ncol=3):
+    """
+    Creates a scatter plot of PCA features and scales the feature values for coloring.
+
+    Args:
+    data: pd.DataFrame
+        The dataframe with PCA and feature columns.
+    col_pca: list of str
+        The PCA component columns to be plotted on x and y axes.
+    col_features: list of str
+        The feature columns to be used for coloring the points.
+    squish_lwr: float
+        Lower bound for squishing the feature values to a range.
+    squish_upr: float
+        Upper bound for squishing the feature values to a range.
+    engine: str
+        Plotting engine to be used ('ggplot' for plotnine, 'plotly' for plotly express).
     
+    Returns:
+    plot: ggplot or plotly figure
+        The plot object (either from plotnine or plotly).
+    """
+    # Pivot the features and scale the values
+    data_long = data.melt(id_vars=col_pca, value_vars=col_features, var_name='variable', value_name='value')
+
+    # Scale the values (grouped by 'variable')
+    data_long['value'] = data_long.groupby('variable')['value'].transform(lambda x: StandardScaler().fit_transform(x.values.reshape(-1, 1)).flatten())
+    
+    # Clip the values to the 1st and 99th percentiles within each group
+    data_long['value'] = data_long.groupby('variable')['value'].transform(lambda x: kit_squishToRange(x, 0.01, 0.99))
+  
+    if engine == 'ggplot':
+        # Create the plot with plotnine (ggplot2 style)
+        p = (
+            ggplot.ggplot(data_long, ggplot.aes(x=col_pca[0], y=col_pca[1], color='value')) +
+            ggplot.geom_point(size=3) +
+            ggplot.scale_color_gradient(low="green", high="red") +
+            ggplot.theme_bw() +
+            ggplot.facet_wrap('~variable', ncol=ncol)
+        )
+    elif engine == 'plotly':
+        # Create the plot with plotly
+        p = px.scatter(
+            data_long,
+            x=col_pca[0],
+            y=col_pca[1],
+            color='value',
+            facet_col='variable',
+            facet_col_wrap=ncol,
+            # color_continuous_scale=px.colors.sequential.RdYlGn[::-1],  # Red to green
+            title="PCA Feature Plot"
+        )
+        # Adjust layout for plotly
+        p.update_layout(
+            xaxis_title=col_pca[0],
+            yaxis_title=col_pca[1],
+            coloraxis_colorbar=dict(title="Value")
+        )
+    else:
+        raise ValueError(f"Engine '{engine}' is not supported. Use 'ggplot' or 'plotly'.")
+
+    return p
+
 def feat_cor_pca(data_corr, n_cluster = 3, n_dim = 2, target = None):
     """
     Perform PCA on the correlation data, cluster the results, and visualize the clusters in a scatter plot.
@@ -540,6 +606,58 @@ def coord_plot(data, group_var):
 
     return [x_grp, df_grp_mm]
 
+def importance_tree(ml, colnames, top_n=None):
+    """
+    Plots feature importance for tree-based models and returns the importance dataframe.
+
+    Parameters:
+    -----------
+    ml : fitted model
+        The tree-based machine learning model (e.g., RandomForestClassifier, GradientBoostingClassifier, etc.)
+        that has the attribute `feature_importances_` after fitting.
+    
+    colnames : list or array-like
+        A list or array containing the names of the features used in the model.
+    
+    top_n : int, optional
+        Number of top features to display in the plot. If None, all features will be displayed.
+
+    Returns:
+    --------
+    importance : pandas.DataFrame
+        A dataframe containing the feature names and their corresponding importance scores, sorted in descending order.
+
+    Example:
+    --------
+    >>> model = RandomForestClassifier()
+    >>> model.fit(X_train, y_train)
+    >>> importance_tree(model, X_train.columns, top_n=10)
+    """
+    importance = pd.DataFrame({
+        'imp': ml.feature_importances_,
+        'feature': colnames
+    })
+
+    # Sort features by importance and get top_n if specified
+    importance = importance.sort_values(by='imp', ascending=False)[:top_n]
+
+    # Plot the feature importances
+    plt.figure(figsize=(8, 5))
+    sns.barplot(y='feature', x='imp', data=importance, orient='h')
+
+    # Set plot title and display
+    plt.title(f'Top {'' if top_n is None else top_n} important features')
+    plt.show()
+
+    return importance
+
+def kit_squishToRange(series, lower_percentile=0.01, upper_percentile=0.99):
+    """
+    Clips the values in a series to the specified lower and upper percentiles.
+    """
+    lower_bound = series.quantile(lower_percentile)
+    upper_bound = series.quantile(upper_percentile)
+    return series.clip(lower=lower_bound, upper=upper_bound)
 
 def reduce_mem_usage(df, verbose=True):
     numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
