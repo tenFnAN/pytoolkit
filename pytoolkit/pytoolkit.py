@@ -336,6 +336,35 @@ def feat_cor(data, method='pearson'):
 
     return(d_long2)
 
+def feat_cor_heatmap(data_corr, figsize=(12, 11)):
+    """
+    Generate a heatmap to visualize the correlation between features.
+
+    This function calculates the correlation coefficients between pairs of features
+    using the `feat_cor` function, then creates a heatmap to display the correlation matrix.
+
+    Parameters:
+    -----------
+    data_corr : pd.DataFrame
+        A DataFrame containing the data for which correlations are to be computed.
+        
+    figsize : tuple, optional
+        The size of the figure to be displayed. Default is (12, 11).
+
+    Returns:
+    --------
+    None
+        The function displays a heatmap of the correlation coefficients.
+
+    Example:
+    ---------
+    >>> feat_cor_heatmap(data)
+    """
+    data_corr = feat_cor(data_corr).loc[:, ['v1', 'v2', 'R']].pivot(index='v1', columns='v2', values='R').fillna(0)
+    plt.figure(figsize=figsize)
+    sns.heatmap(data_corr, annot=True, fmt=".2f", annot_kws={"size": 5})
+    plt.show()
+    
 def feat_cor_pca(data_corr, n_cluster = 3, n_dim = 2, target = None):
     """
     Perform PCA on the correlation data, cluster the results, and visualize the clusters in a scatter plot.
@@ -378,7 +407,7 @@ def feat_cor_pca(data_corr, n_cluster = 3, n_dim = 2, target = None):
 
     data_pca['cl'] = ml_km.predict(data_pca.iloc[:,:n_dim])
 
-    var_explained = np.round(np.cumsum(pca.explained_variance_ratio_)[1],2)
+    var_explained = np.round(np.cumsum(pca.explained_variance_ratio_)[1]*100,2)
 
     data_pca['col'] = (data_pca['var'] == target).astype(int).astype(str) + data_pca['cl'].astype(int).astype(str)
 
