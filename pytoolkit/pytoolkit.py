@@ -368,6 +368,30 @@ def feat_cor_heatmap(data_corr, target= None, figsize=(12, 11)):
     sns.heatmap(data_corr, annot=True, fmt=".2f", annot_kws={"size": 5})
     plt.show()
 
+def feat_cor_dot(data_corr, xvar):
+    # Subset the data
+    df_subset = data_corr[data_corr['v1'] == xvar] 
+
+    # Add a new column "Correlation" based on the value of 'r'
+    df_subset['Correlation'] = np.where(df_subset['R'] >= 0, "Positive", "Negative")
+
+    # Reorder the 'y' column based on the absolute value of 'r'
+    df_subset = df_subset.sort_values('R', ascending=True)
+
+    # Create the plot
+    p = (
+        ggplot.ggplot(df_subset, ggplot.aes(x='R', y='v2', group='v2')) +
+        ggplot.geom_point(ggplot.aes(color='Correlation'), size=2) +
+        ggplot.geom_segment(ggplot.aes(xend=0, yend='v2', color='Correlation'), size=1) +
+        ggplot.geom_vline(xintercept=0, color='#1F77B4', size=1) +
+        ggplot.expand_limits(x=(-1, 1)) +
+        ggplot.scale_color_manual(values={"Positive": "#2C3E50", "Negative": "#E31A1C"}) +
+        ggplot.theme_bw() +
+        ggplot.ggtitle(f'Cor {xvar}') 
+    )
+
+    return p
+
 def plot_pca_features(data, col_pca, col_features, squish_lwr=0.01, squish_upr=0.99, engine='ggplot', ncol=3):
     """
     Creates a scatter plot of PCA features and scales the feature values for coloring.
