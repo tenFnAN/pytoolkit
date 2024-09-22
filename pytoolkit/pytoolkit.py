@@ -5,6 +5,7 @@ import os, psutil
 import matplotlib.pyplot as plt
 import seaborn as sns 
 from pandas.plotting import parallel_coordinates
+import plotly.express as px
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.decomposition import PCA
