@@ -248,7 +248,7 @@ def cat_vars(data, exclude_var=None):
     >> iris = sns.load_dataset('iris')
     >> cat_vars(iris)
     """
-    cat_v = data.select_dtypes(include=['object','category', 'string']).columns
+    cat_v = data.select_dtypes(include=['object','category', 'string', 'bool']).columns
     if exclude_var is not None: 
         cat_v=cat_v.drop(exclude_var)
     return cat_v
@@ -281,8 +281,8 @@ def profiling_num(data):
     
     des1=pd.DataFrame({'mean':d.mean().transpose(), 
                    'std_dev':d.std().transpose()})
-
-    des1['variation_coef']=des1['std_dev']/des1['mean']
+    # variation_coef
+    des1['cv']=des1['std_dev']/des1['mean']
     
     d_quant=d.quantile([0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99]).transpose().add_prefix('p_')
     
@@ -293,9 +293,9 @@ def profiling_num(data):
     des_final['variable'] = des_final.index
     
     des_final=des_final.reset_index(drop=True)
-    des_final['skew'] = d.skew().values
+    des_final = des_final.merge(d.skew().reset_index().rename(columns={0:'skew'}),left_on='variable', right_on='index' )
 
-    des_final=des_final[['variable', 'mean', 'std_dev','variation_coef', 'skew', 'p_0.01', 'p_0.05', 'p_0.25', 'p_0.5', 'p_0.75', 'p_0.95', 'p_0.99']]
+    des_final=des_final[['variable', 'mean', 'std_dev','cv', 'skew', 'p_0.01', 'p_0.05', 'p_0.25', 'p_0.5', 'p_0.75', 'p_0.95', 'p_0.99']]
      
     return des_final.round(2)
 
