@@ -7,6 +7,8 @@ import seaborn as sns
 from pandas.plotting import parallel_coordinates
 
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 import scipy.stats as st
 
 import inspect
@@ -291,10 +293,11 @@ def profiling_num(data):
     des_final['variable'] = des_final.index
     
     des_final=des_final.reset_index(drop=True)
-    
-    des_final=des_final[['variable', 'mean', 'std_dev','variation_coef', 'p_0.01', 'p_0.05', 'p_0.25', 'p_0.5', 'p_0.75', 'p_0.95', 'p_0.99']]
-    
-    return des_final
+    des_final['skew'] = d.skew().values
+
+    des_final=des_final[['variable', 'mean', 'std_dev','variation_coef', 'skew', 'p_0.01', 'p_0.05', 'p_0.25', 'p_0.5', 'p_0.75', 'p_0.95', 'p_0.99']]
+     
+    return des_final.round(2)
 
 def feat_cor(data, method='pearson'):
     """
@@ -332,7 +335,72 @@ def feat_cor(data, method='pearson'):
 
     return(d_long2)
 
+def feat_cor_pca(data_corr, n_cluster = 3, n_dim = 2, target = None):
+    """
+    Perform PCA on the correlation data, cluster the results, and visualize the clusters in a scatter plot.
 
+    Parameters:
+    ----------
+    data_corr : pd.DataFrame
+        A DataFrame containing correlation data. If the diagonal is not all ones, 
+        it will be processed to calculate feature correlations.
+    
+    n_cluster : int, optional
+        The number of clusters to form using KMeans. Default is 3.
+    
+    n_dim : int, optional
+        The number of dimensions to use for PCA. Default is 2.
+    
+    target : str, optional
+        The variable to highlight in the plot. If specified, it will be used to color the points.
+
+    Returns:
+    -------
+    None
+        Displays a scatter plot of the PCA results with clusters.
+
+    Notes:
+    -----
+    - The function checks if the diagonal of the correlation matrix is all ones. 
+      If not, it computes feature correlations using a helper function `my.feat_cor`.
+    - PCA is performed to reduce the dimensionality of the data.
+    - KMeans clustering is applied to group the data based on PCA results.
+    - A scatter plot is generated using Plotly, highlighting the clusters and target variable.
+    """
+    if all(np.diag(data_corr) == 1) is not True:
+        data_corr = feat_cor(data_corr).loc[:, ['v1', 'v2', 'R']].pivot(index = 'v1',columns= 'v2', values = 'R').fillna(1)
+    # dimension reduction
+    pca = PCA(n_components=3)
+    data_pca = pd.DataFrame(pca.fit_transform(data_corr), columns=['PC1','PC2','PC3']).assign(var = data_corr.index)
+    # clustering
+    ml_km = KMeans(n_cluster).fit(data_pca.iloc[:,:n_dim])
+
+    data_pca['cl'] = ml_km.predict(data_pca.iloc[:,:n_dim])
+
+    var_explained = np.round(np.cumsum(pca.explained_variance_ratio_)[1],2)
+
+    data_pca['col'] = (data_pca['var'] == target).astype(int).astype(str) + data_pca['cl'].astype(int).astype(str)
+
+    # Create the plot
+    fig = px.scatter(
+        data_pca,
+        x='PC1',
+        y='PC2',
+        color='col',
+        text='var',
+        labels={'col': 'cl', 'PC1': 'Dim_1', 'PC2': 'Dim_2'},
+        title=f'var. ex. 2D: {var_explained} %'
+    )
+
+    # Add horizontal and vertical lines
+    fig.add_hline(y=0, line=dict(color='black', width=0.5))
+    fig.add_vline(x=0, line=dict(color='black', width=0.5))
+
+    # Add labels using Plotly's update_traces
+    fig.update_traces(textposition='top center', textfont=dict(size=12))
+
+    # Show the plot
+    fig.show()  
 
 def _freq_tbl_logic(var, name):
     """
