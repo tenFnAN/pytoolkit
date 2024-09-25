@@ -669,8 +669,8 @@ def importance_tree(ml, colnames, top_n=None):
     plt.figure(figsize=(8, 5))
     sns.barplot(y='feature', x='imp', data=importance, orient='h')
 
-    # Set plot title and display
-    plt.title(f'Top {'' if top_n is None else top_n} important features')
+    # Set plot title and display 
+    plt.title(f"Top {'' if top_n is None else top_n} important features")
     plt.show()
 
     return importance
