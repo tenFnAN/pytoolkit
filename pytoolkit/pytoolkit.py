@@ -630,51 +630,31 @@ def coord_plot(data, group_var):
 
     return [x_grp, df_grp_mm]
 
-def importance_tree(ml, colnames, top_n=None):
-    """
-    Plots feature importance for tree-based models and returns the importance dataframe.
 
-    Parameters:
-    -----------
-    ml : fitted model
-        The tree-based machine learning model (e.g., RandomForestClassifier, GradientBoostingClassifier, etc.)
-        that has the attribute `feature_importances_` after fitting.
-    
-    colnames : list or array-like
-        A list or array containing the names of the features used in the model.
-    
-    top_n : int, optional
-        Number of top features to display in the plot. If None, all features will be displayed.
+## data wrangling
+def mutate_if_numeric(data: pd.DataFrame, func=np.log1p) -> pd.DataFrame:
+    """
+    Apply a given function to all numeric columns in the DataFrame.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame with various column types.
+        func (callable): A function to apply to all numeric columns (default is np.log1p).
 
     Returns:
-    --------
-    importance : pandas.DataFrame
-        A dataframe containing the feature names and their corresponding importance scores, sorted in descending order.
-
+        pd.DataFrame: A new DataFrame with the function applied to numeric columns.
+    
     Example:
-    --------
-    >>> model = RandomForestClassifier()
-    >>> model.fit(X_train, y_train)
-    >>> importance_tree(model, X_train.columns, top_n=10)
+        mutate_if_numeric(df, np.log1p)
     """
-    importance = pd.DataFrame({
-        'imp': ml.feature_importances_,
-        'feature': colnames
-    })
+    # Apply the function only to numeric columns'
+    data_ = data.copy()
+    numeric_cols = data_.select_dtypes(include=[np.number]).columns
+    data_[numeric_cols] = data_[numeric_cols].apply(func)
+    
+    return data_
 
-    # Sort features by importance and get top_n if specified
-    importance = importance.sort_values(by='imp', ascending=False)[:top_n]
 
-    # Plot the feature importances
-    plt.figure(figsize=(8, 5))
-    sns.barplot(y='feature', x='imp', data=importance, orient='h')
-
-    # Set plot title and display 
-    plt.title(f"Top {'' if top_n is None else top_n} important features")
-    plt.show()
-
-    return importance
-
+## toolkit
 def kit_squishToRange(series, lower_percentile=0.01, upper_percentile=0.99):
     """
     Clips the values in a series to the specified lower and upper percentiles.
@@ -682,6 +662,34 @@ def kit_squishToRange(series, lower_percentile=0.01, upper_percentile=0.99):
     lower_bound = series.quantile(lower_percentile)
     upper_bound = series.quantile(upper_percentile)
     return series.clip(lower=lower_bound, upper=upper_bound)
+
+def kit_calc_range(lst):
+    return max(lst) - min(lst)
+
+def kit_whiskers(feature: pd.Series):
+  """
+    Calculate and print the lower and upper whiskers (1.5 * IQR rule) for detecting outliers 
+    in a given numerical feature using the Interquartile Range (IQR).
+
+    Args:
+        feature (pd.Series): A pandas Series representing the numerical data for which whiskers are calculated.
+        
+    Prints:
+        Left whisker: The lower bound for detecting outliers (Q1 - 1.5 * IQR).
+        Right whisker: The upper bound for detecting outliers (Q3 + 1.5 * IQR).
+        
+    Example:
+        feature = pd.Series([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        calc_whiskers(feature)
+        
+        Output:
+            Left whisker: -5.5
+            Right whisker: 15.5
+    """
+  Q1 = np.percentile(feature, 25)
+  Q3 = np.percentile(feature, 75)
+  IQR = Q3 - Q1
+  print(f'Left whisker: {Q1 - 1.5 * IQR}\nRight whisker: {Q3 + 1.5 * IQR}')
 
 
 ## plot
@@ -723,8 +731,509 @@ def draw_boxplot_all(data, ncol = 3):
 
     return p
 
+def draw_pairplot(data, cols, target, engine = 'ggplot'):
+    # Long format to plot pairwise relationships
+    # df_long = pd.melt(data, id_vars=[target], value_vars=cols, var_name='Feature', value_name='Value')
+    
+    # Pairwise plot with color by target
+    if engine == 'ggplot':
+        plot = (
+            ggplot.ggplot(data, ggplot.aes(x=cols[0], y=cols[1], color=target)) +
+            ggplot.geom_point(alpha=0.6) +
+            ggplot.geom_smooth(method='lm', color='blue', se=False) +
+            # ggplot.facet_wrap('~ Feature', scales='free', ncol=ncol) +  # Facet wrap for each feature
+            # ggplot.labs(title=f'Pairplot for {cols} and {target}') +
+            ggplot.theme_bw() + 
+            ggplot.theme(legend_position='right')  
+        )
+    elif engine == 'plotly':
+        plot = px.scatter(
+            data, 
+            x=cols[0], 
+            y=cols[1], 
+            color=target,  # Color points by target
+            title=f'Pairplot for {cols[0]} vs {cols[1]} by {target}',
+            trendline="ols",  # Add linear regression line (optional)
+            labels={cols[0]: cols[0], cols[1]: cols[1], 'color': target},
+            hover_data=[target]  # Show target value on hover
+        )
+
+        # Update layout for better visualization
+        plot.update_layout(
+            legend=dict(orientation="v", yanchor="top", y=1.02, xanchor="left", x=1),
+            template="plotly_white"
+        )
+    else:
+        raise ValueError("Invalid engine! Please choose either 'ggplot' or 'plotly'.")
+    
+    return plot
 
 
+def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = None, title: str = "Scatter Plot", engine = 'ggplot'):
+    """
+    Create a scatter plot using plotnine for two features from the given DataFrame.
+
+    Args:
+        data (pd.DataFrame): The input data containing the features to be plotted.
+        feature_x (str): The column name for the x-axis feature.
+        feature_y (str): The column name for the y-axis feature.
+        title (str): Title of the plot (default is "Scatter Plot").
+
+    Returns:
+        plot (ggplot): The scatter plot generated using plotnine.
+
+    Example:
+        plot_scatter(data=df, feature_x="age", feature_y="salary", title="Age vs Salary")
+    """
+    if by:
+        if data[by].dtype not in ['object','category', 'string', 'bool']:
+            if data[by].nunique() <= 10:
+                data[by] = data[by].astype('object')
+    if engine == 'ggplot':
+        if by:
+            p = (
+                ggplot.ggplot(data, ggplot.aes(x=feature_x, y=feature_y, color=by)) +
+                ggplot.geom_point() +
+                ggplot.labs(title=title, x=feature_x, y=feature_y)
+            )
+        else:
+            p = (
+                ggplot.ggplot(data, ggplot.aes(x=feature_x, y=feature_y)) +
+                ggplot.geom_point(color="blue") +
+                ggplot.labs(title=title, x=feature_x, y=feature_y)
+            )
+    elif engine == 'plotly':
+        if by:
+            p = px.scatter(data, x=feature_x, y=feature_y, color=by, title=title)
+        else:
+            p = px.scatter(data, x=feature_x, y=feature_y, title=title)
+        p.show()
+    return p
+
+def draw_barplot_cat(data, x, y = None, type = None, title="Custom Bar Plot", label_percent = False):
+    # Create the plot
+    # sns.barplot(pd.value_counts(target) )
+    # plt.title('distribution of target: has the client subscribed a term deposit?')
+    def prop_per_x(x, count):
+        """
+        Compute the proportion of the counts for each value of x
+        """
+        df = pd.DataFrame({"x": x, "count": count})
+        prop = df["count"] / df.groupby("x")["count"].transform("sum")
+        return prop
+
+    if type is None:
+        plot = (
+            ggplot.ggplot(data, ggplot.aes(x=x)) +
+            ggplot.geom_bar() +
+            ggplot.labs(title=title, x=x)
+        )
+    elif type == 'dodge':
+        # https://plotnine.org/tutorials/miscellaneous-show-counts-and-percentages-for-bar-plots.html
+        plot = (ggplot.ggplot(data, ggplot.aes(x=x, fill=y)) +
+                ggplot.geom_bar(position=ggplot.position_dodge()) +
+                ggplot.theme(figure_size=(10, 4),  
+                    dpi=80,   
+                    axis_text_x=ggplot.element_text(rotation=45, hjust=1)) +   
+                ggplot.labs(x=x, y='Count')) 
+        if label_percent is not False:
+            plot = (plot +
+                ggplot.geom_text(
+                ggplot.aes(
+                    label=ggplot.after_stat("prop_per_x(x, count) * 100"),
+                    y=ggplot.stage(after_stat="count", after_scale="y + 0.25"),
+                ),
+                stat="count",
+                position=ggplot.position_dodge2(width=0.9),
+                format_string="{:.1f}%",
+                size=9,
+            ))
+    return plot
+
+def draw_histogram(data, feature=None, title="Histogram", bins = 10):
+    # sns.histplot(data['emp.var.rate'])
+    if isinstance(data, pd.Series):
+        feature_name = data.name
+        plot_data = data.to_frame()
+    # If data is a DataFrame, use the feature column
+    elif isinstance(data, pd.DataFrame) and feature:
+        feature_name = feature
+        plot_data = data[[feature]]
+    else:
+        raise ValueError("Invalid input: data must be a pandas Series or DataFrame with a feature specified.")
+
+    plot = (
+        ggplot.ggplot(plot_data, ggplot.aes(x=feature_name)) +
+        ggplot.geom_histogram(bins=bins, fill="skyblue", color="black") +
+        ggplot.labs(title=title, x=feature_name, y="Count")
+    )
+    return plot
+
+def draw_histogram_all(data, ncol = 3): 
+    data_long = pd.melt(data[my.num_vars(data)])
+
+    # Create the plot
+    p = (
+        ggplot.ggplot(data_long, ggplot.aes(x='value')) +
+        ggplot.geom_histogram(bins=30) +
+        ggplot.facet_wrap('variable', scales='free', ncol=ncol) +
+        ggplot.theme_bw()
+    )
+
+    return p
+
+
+def draw_density(data, feature, by = None, title="Density", alpha = 0.5):
+    # sns.distplot(data['emp.var.rate'])
+    if by is None:
+       plot = (
+            ggplot.ggplot(data, ggplot.aes(x=feature )) +
+            ggplot.geom_density( alpha = alpha)  )
+    else:
+        if data[by].dtype not in ['object','category', 'string', 'bool']:
+            data[by] = data[by].astype('object')
+        plot = (
+            ggplot.ggplot(data, ggplot.aes(x=feature, fill = by )) +
+            ggplot.geom_density( alpha = alpha)  )
+ 
+    return plot
+
+def draw_density_all(data, ncol=3):
+    # Reshape the DataFrame from wide to long format
+    data_long = pd.melt(data[my.num_vars(data)])
+
+    # Create the density plot
+    p = (
+        ggplot.ggplot(data_long, ggplot.aes(x='value', fill='variable')) +
+        ggplot.geom_density(alpha=0.5) +  # Use alpha for transparency
+        ggplot.facet_wrap('variable', scales='free', ncol=ncol) +
+        ggplot.theme_bw() + 
+        ggplot.theme(legend_position='bottom')
+    )
+
+    return p
+
+## ############################################### plot ml
+
+def draw_pca_explained_variance(pca_object):
+    # https://plotly.com/python/pca-visualization/#pca-analysis-in-dash
+    exp_var_cumul = np.cumsum(pca_object.explained_variance_ratio_)
+
+    p = px.area(
+        x=range(1, exp_var_cumul.shape[0] + 1),
+        y=exp_var_cumul,
+        labels={"x": "# Components", "y": "Explained Variance"} )
+    
+    return p
+
+def importance_lm(ml, colnames, top_n=None):
+    """
+    Plots feature importance based on the absolute value of coefficients for linear models 
+    and returns the importance dataframe.
+
+    Parameters:
+    -----------
+    ml : fitted linear model
+        The linear model (e.g., LinearRegression, LogisticRegression) that has the attribute `coef_` after fitting.
+    
+    colnames : list or array-like
+        A list or array containing the names of the features used in the model.
+    
+    top_n : int, optional
+        Number of top features to display in the plot. If None, all features will be displayed.
+
+    Returns:
+    --------
+    importance : pandas.DataFrame
+        A dataframe containing the feature names and their corresponding absolute coefficient values, 
+        sorted in descending order.
+
+    Example:
+    --------
+    >>> model = LogisticRegression()
+    >>> model.fit(X_train, y_train)
+    >>> importance_lm(model, X_train.columns, top_n=10)
+    """
+    # Create dataframe with absolute values of coefficients and feature names
+    importance = pd.DataFrame({
+        'abs_weight': np.abs(ml.coef_),
+        'feature': colnames
+    })
+
+    # Sort by absolute weight and get top_n if specified
+    importance = importance.sort_values(by='abs_weight', ascending=False)[:top_n]
+
+    # Plot the top features based on the absolute values of coefficients
+    plt.figure(figsize=(8, 5))
+    sns.barplot(y='feature', x='abs_weight', data=importance, orient='h')
+
+    # Set plot title and display
+    plt.title(f'Top {'' if top_n is None else top_n} important features')
+    plt.show()
+
+    return importance
+
+
+def importance_tree(ml, colnames, top_n=None):
+    """
+    Plots feature importance for tree-based models and returns the importance dataframe.
+
+    Parameters:
+    -----------
+    ml : fitted model
+        The tree-based machine learning model (e.g., RandomForestClassifier, GradientBoostingClassifier, etc.)
+        that has the attribute `feature_importances_` after fitting.
+    
+    colnames : list or array-like
+        A list or array containing the names of the features used in the model.
+    
+    top_n : int, optional
+        Number of top features to display in the plot. If None, all features will be displayed.
+
+    Returns:
+    --------
+    importance : pandas.DataFrame
+        A dataframe containing the feature names and their corresponding importance scores, sorted in descending order.
+
+    Example:
+    --------
+    >>> model = RandomForestClassifier()
+    >>> model.fit(X_train, y_train)
+    >>> importance_tree(model, X_train.columns, top_n=10)
+    """
+    importance = pd.DataFrame({
+        'imp': ml.feature_importances_,
+        'feature': colnames
+    })
+
+    # Sort features by importance and get top_n if specified
+    importance = importance.sort_values(by='imp', ascending=False)[:top_n]
+
+    # Plot the feature importances
+    plt.figure(figsize=(8, 5))
+    sns.barplot(y='feature', x='imp', data=importance, orient='h')
+
+    # Set plot title and display
+    plt.title(f'Top {'' if top_n is None else top_n} important features')
+    plt.show()
+
+    return importance
+
+def draw_ml_residuals(X_val: pd.DataFrame, y_val: pd.core.series.Series, ml):
+    """
+    Draws residual plots to analyze model errors using Plotnine with facet_wrap.
+
+    Args:
+        X_val (pd.DataFrame): Validation features.
+        y_val (pd.Series): True target values for validation.
+        ml: Trained linear regression model (must have a predict method).
+    
+    Returns:
+        None: Displays the residual plots.
+    """
+    # Predict the values and calculate residuals
+    pred = ml.predict(X_val)
+    errors = y_val - pred
+
+    # Create a DataFrame for easier plotting
+    plot_data = pd.DataFrame({
+        'Index': range(len(errors)),
+        'Errors': errors,
+        'Predicted': pred
+    })
+
+    # Plot 1: Distribution of errors with Index on x-axis
+    plot1 = (
+        ggplot.ggplot(plot_data, ggplot.aes(x='Index', y='Errors')) +
+        ggplot.geom_point(color="blue") +
+        ggplot.labs(title="Distribution of Errors", x="Index", y="Error")
+    )
+
+    # Plot 2: Relationship between Predicted values and Errors (residual analysis)
+    plot2 = (
+        ggplot.ggplot(plot_data, ggplot.aes(x='Predicted', y='Errors')) +
+        ggplot.geom_point(color="red") +
+        ggplot.labs(title="Predicted Value vs Error (Residual Analysis)", x="Predicted Value", y="Error")
+    ) 
+    return plot1, plot2
+
+## Statistical tests
+
+
+def test_cor_significance(data: pd.DataFrame, 
+                         x : list,
+                         y: str,
+                         method: str ,
+                         alpha: float = 0.05 
+                           ):
+    p_values = []
+    for cols in x:
+        if method == 'pearson':
+          p_value = round(st.pearsonr(data[cols], data[y])[1], 3)
+        else:
+          p_value = round(st.spearmanr(data[cols], data[y])[1], 3)
+
+        p_values.append(p_value)
+        print(f'{cols} <-> {y} correlation: p-value = {p_value}')
+
+        if p_value > alpha:
+            print('This correlation coefficient is NOT significant!\n')
+        else:
+          print('This correlation coefficient is significant\n') 
+    return
+
+def test_ttest_ind_significance(sample1, sample2, alpha=0.05):
+    """
+    test_ttest_significance(data[data['yr']==0]['cnt'], data[data['yr']==1]['cnt'])
+    Perform an independent t-test on two samples and interpret the p-value.
+    This is a test for the null hypothesis that 2 independent samples have identical average.
+    Użyj ttest_ind, gdy masz niezależne próbki (np. dwie różne grupy).
+    Probki moga miec rozny rozmiar.
+
+    Parameters:
+    - sample1: array-like, first sample data
+    - sample2: array-like, second sample data
+    - alpha: significance level for the test (default is 0.05)
+
+    Returns:
+    - t_stat: t-statistic of the test
+    - p_value: p-value of the test
+    - interpretation: string interpretation of the p-value
+    """
+    # Calculate the t-statistic and p-value
+    t_stat, p_value = st.ttest_ind(sample1, sample2)
+
+    # Interpretation of the p-value
+    if p_value < alpha:
+        interpretation = "Reject the null hypothesis: There is a significant difference between the two groups."
+    else:
+        interpretation = "Fail to reject the null hypothesis: No significant difference between the two groups."
+
+    return t_stat, p_value, interpretation
+
+def test_ttest_rel_significance(sample1, sample2, alpha=0.05):
+    """
+    Perform a paired t-test on two samples and interpret the p-value.
+    This is a test for the null hypothesis that two related samples have identical average.
+    Użyj ttest_rel, gdy masz powiązane próbki (np. przed i po pomiarach).
+    Probki musza miec ten sam rozmiar.
+    
+    Parameters:
+    - sample1: array-like, first sample data
+    - sample2: array-like, second sample data
+    - alpha: significance level for the test (default is 0.05)
+
+    Returns:
+    - t_stat: t-statistic of the test
+    - p_value: p-value of the test
+    - interpretation: string interpretation of the p-value
+    """
+    # Calculate the t-statistic and p-value
+    t_stat, p_value = st.ttest_rel(sample1, sample2)
+
+    # Interpretation of the p-value
+    if p_value < alpha:
+        interpretation = "Reject the null hypothesis: There is a significant difference between the two groups."
+    else:
+        interpretation = "Fail to reject the null hypothesis: No significant difference between the two groups."
+
+    return t_stat, p_value, interpretation
+
+def test_chi2_significance(data: pd.DataFrame, 
+                         x : str,
+                         y: str, 
+                         alpha: float = 0.05 
+                           ):
+    stat, p, dof, expected  = st.chi2_contingency(pd.crosstab(data[x], data[y])) 
+ 
+    print('p-value:', round(p, 5))
+    if p <= alpha:
+        v = '+++'
+        s = 'dependent'
+        print('reject H0 | there is a association between the two groups')
+    else:
+        v = '---'
+        s = 'independent'
+        print('fail to reject H0 | there is no association between the two groups')
+
+    return [np.round(p,2), v, s]
+
+def test_kruskal_significance(*groups, data=None, x=None, y=None, alpha=0.05 ):
+    """
+    Perform Kruskal-Wallis H-test to determine if there are statistically significant 
+    differences between the distributions of two or more independent samples.
+ 
+    Args:
+        *groups: Variable number of independent sample groups (e.g., group_1, group_2, ...).
+        data (DataFrame, optional): DataFrame containing the data for grouping.
+        x (str, optional): Column name for grouping (categorical variable).
+        y (str, optional): Column name with the values to compare across groups (numerical variable).
+        alpha (float, optional): Significance level to test the hypothesis (default is 0.05).
+
+    Returns:
+        stat (float): Test statistic from the Kruskal-Wallis test.
+        p (float): P-value from the test.
+
+    Example usage:
+        1. Direct group input:
+            test_kruskal_significance(group_1, group_2, group_3)
+        
+        2. From DataFrame:
+            test_kruskal_significance(data=df, x='group_col', y='value_col')
+    """   
+    if groups:
+        stat, p = st.kruskal(*groups)
+    
+    # Option 2: If data, x, and y are passed
+    elif data is not None and x is not None and y is not None:
+        # Create groups from the DataFrame based on unique values in column x
+        groups = [data[data[x] == val][y] for val in data[x].unique()]
+        stat, p = st.kruskal(*groups)
+    
+    else:
+        raise ValueError("Either provide *groups or data, x, and y.")
+    print(f'stat=%.3f, p=%.3f' % (stat, p))    
+    if p > alpha:
+        print('The distributions are likely the same (fail to reject H0).')
+    else:
+        print('The distributions are significantly different (reject H0).')
+
+    return stat, p
+
+def test_normality(data: pd.DataFrame, x : str):
+    """
+    Perform a normality test on a specified column of a DataFrame using the Anderson-Darling test.
+
+    Parameters:
+    ----------
+    data : pd.DataFrame
+        The input DataFrame containing the data to be tested for normality.
+    x : str
+        The name of the column in the DataFrame to be tested.
+
+    Returns:
+    -------
+    p : matplotlib.figure.Figure
+        A histogram plot of the specified column's data, illustrating its distribution.
+
+    Prints:
+    -------
+    Displays the test statistic and critical values for different significance levels, 
+    indicating whether the null hypothesis (data is normally distributed) is rejected or not.
+    """
+    # test_normality(data.assign(n = np.random.normal(loc=50, scale=10, size=len(data)) ), 'n')
+    result = st.anderson(data[x])
+    print('Statistic: %.3f' % result.statistic)
+
+    for i in range(len(result.critical_values)):
+      sl, cv = result.significance_level[i], result.critical_values[i]
+      if result.statistic < result.critical_values[i]:
+        print('+++%.3f: %.3f, data looks normal (fail to reject H0)' % (sl, cv))
+      else:
+        print('---%.3f: %.3f, data does not look normal (reject H0)' % (sl, cv))
+ 
+    p = my.draw_histogram(data, x)
+    return p
 
 
 def reduce_mem_usage(df, verbose=True):
