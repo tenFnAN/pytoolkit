@@ -719,7 +719,7 @@ def draw_boxplot_cat(data, by, y, title="Box Plot"):
 
 def draw_boxplot_all(data, ncol = 3):
     # Reshape the DataFrame from wide to long format
-    data_long = pd.melt(data[my.num_vars(data)])
+    data_long = pd.melt(data[num_vars(data)])
 
     # Create the boxplot
     p = (
@@ -870,7 +870,7 @@ def draw_histogram(data, feature=None, title="Histogram", bins = 10):
     return plot
 
 def draw_histogram_all(data, ncol = 3): 
-    data_long = pd.melt(data[my.num_vars(data)])
+    data_long = pd.melt(data[num_vars(data)])
 
     # Create the plot
     p = (
@@ -900,7 +900,7 @@ def draw_density(data, feature, by = None, title="Density", alpha = 0.5):
 
 def draw_density_all(data, ncol=3):
     # Reshape the DataFrame from wide to long format
-    data_long = pd.melt(data[my.num_vars(data)])
+    data_long = pd.melt(data[num_vars(data)])
 
     # Create the density plot
     p = (
@@ -1232,7 +1232,7 @@ def test_normality(data: pd.DataFrame, x : str):
       else:
         print('---%.3f: %.3f, data does not look normal (reject H0)' % (sl, cv))
  
-    p = my.draw_histogram(data, x)
+    p = draw_histogram(data, x)
     return p
 
 
