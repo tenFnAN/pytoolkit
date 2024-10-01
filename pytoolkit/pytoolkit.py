@@ -885,15 +885,16 @@ def draw_histogram_all(data, ncol = 3):
 
 def draw_density(data, feature, by = None, title="Density", alpha = 0.5):
     # sns.distplot(data['emp.var.rate'])
+    data_ = data.copy()
     if by is None:
        plot = (
-            ggplot.ggplot(data, ggplot.aes(x=feature )) +
+            ggplot.ggplot(data_, ggplot.aes(x=feature )) +
             ggplot.geom_density( alpha = alpha)  )
     else:
-        if data[by].dtype not in ['object','category', 'string', 'bool']:
-            data[by] = data[by].astype('object')
+        if data_[by].dtype not in ['object','category', 'string', 'bool']:
+            data_[by] = data_[by].astype('object')
         plot = (
-            ggplot.ggplot(data, ggplot.aes(x=feature, fill = by )) +
+            ggplot.ggplot(data_, ggplot.aes(x=feature, fill = by )) +
             ggplot.geom_density( alpha = alpha)  )
  
     return plot
