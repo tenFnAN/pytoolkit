@@ -692,7 +692,10 @@ def kit_whiskers(feature: pd.Series):
   IQR = Q3 - Q1
   print(f'Left whisker: {Q1 - 1.5 * IQR}\nRight whisker: {Q3 + 1.5 * IQR}')
 
-
+def kit_binarize_3way(cols, anchor_value = 0):
+    # sklearn.preprocessing.Binarizer
+    return np.where(cols > anchor_value, 1, np.where(cols < anchor_value, -1, 0))
+    
 ## plot
 def draw_boxplot_num(data, y, title="Box Plot"):
 
@@ -1320,7 +1323,21 @@ def reduce_mem_usage_pl(df):
 
 def get_memory_usage():
     return np.round(psutil.Process(os.getpid()).memory_info()[0]/2.**30, 2) 
-        
+
+def get_memory_usage_df(df):
+    """
+    Returns the memory size of a DataFrame in megabytes.
+
+    Parameters:
+    - df: pandas DataFrame
+
+    Returns:
+    - Memory size in MB
+    """
+    memory_size = df.memory_usage(deep=True).sum()
+    memory_in_mb = memory_size / (1024 ** 2)
+    return f"Memory size of DataFrame: {memory_in_mb:.2f} MB"
+
 def sizeof_fmt(num, suffix='B'):
     for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
         if abs(num) < 1024.0:
