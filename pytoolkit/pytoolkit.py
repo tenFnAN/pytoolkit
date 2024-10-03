@@ -337,7 +337,7 @@ def feat_cor(data, method='pearson'):
 
     return(d_long2)
 
-def feat_cor_heatmap(data_corr, target= None, figsize=(12, 11)):
+def feat_cor_heatmap(data, target= None, figsize=(12, 11)):
     """
     Generate a heatmap to visualize the correlation between features.
 
@@ -361,11 +361,12 @@ def feat_cor_heatmap(data_corr, target= None, figsize=(12, 11)):
     ---------
     >>> feat_cor_heatmap(data)
     """
-    data_corr = feat_cor(data_corr).loc[:, ['v1', 'v2', 'R']].pivot(index='v1', columns='v2', values='R').fillna(0)
+    data_corr = feat_cor(data).loc[:, ['v1', 'v2', 'R']].pivot(index='v1', columns='v2', values='R').fillna(0)
     if target is not None:
         data_corr = data_corr.sort_values(target)
     plt.figure(figsize=figsize)
     sns.heatmap(data_corr, annot=True, fmt=".2f", annot_kws={"size": 5})
+    # sns.heatmap(data_corr, vmax=1., vmin=-1., annot=True, linewidths=.8, cmap="YlGnBu")
     plt.show()
 
 def feat_cor_dot(data_corr, xvar):
@@ -822,15 +823,19 @@ def draw_barplot_cat(data, x, y = None, type = None, title="Custom Bar Plot", la
         prop = df["count"] / df.groupby("x")["count"].transform("sum")
         return prop
 
+    data_ = data.copy()
+    if y is not None:
+        if data_[y].dtype not in ['object','category', 'string', 'bool']:
+            data_[y] = data_[y].astype('object')
     if type is None:
         plot = (
-            ggplot.ggplot(data, ggplot.aes(x=x)) +
+            ggplot.ggplot(data_, ggplot.aes(x=x)) +
             ggplot.geom_bar() +
             ggplot.labs(title=title, x=x)
         )
     elif type == 'dodge':
         # https://plotnine.org/tutorials/miscellaneous-show-counts-and-percentages-for-bar-plots.html
-        plot = (ggplot.ggplot(data, ggplot.aes(x=x, fill=y)) +
+        plot = (ggplot.ggplot(data_, ggplot.aes(x=x, fill=y)) +
                 ggplot.geom_bar(position=ggplot.position_dodge()) +
                 ggplot.theme(figure_size=(10, 4),  
                     dpi=80,   
