@@ -643,43 +643,37 @@ def mutate_if_numeric(data: pd.DataFrame, func=np.log1p) -> pd.DataFrame:
     Apply a given function to all numeric columns in the DataFrame.
 
     Args:
-        df (pd.DataFrame): Input DataFrame with various column types.
+        data (pd.DataFrame): Input DataFrame with various column types.
         func (callable): A function to apply to all numeric columns (default is np.log1p).
 
     Returns:
         pd.DataFrame: A new DataFrame with the function applied to numeric columns.
-    
-    Example:
-        mutate_if_numeric(df, np.log1p)
     """
-    # Apply the function only to numeric columns'
-    data_ = data.copy()
-    numeric_cols = data_.select_dtypes(include=[np.number]).columns
-    data_[numeric_cols] = data_[numeric_cols].apply(func)
+    # Select only numeric columns and apply the function
+    numeric_cols = data.select_dtypes(include=[np.number]).columns
+    data[numeric_cols] = data[numeric_cols].apply(func)
     
-    return data_
+    return data
 
-def mutate_if_factor(data: pd.DataFrame, func=lambda x:x.astype('float')) -> pd.DataFrame:
+def mutate_if_factor(data: pd.DataFrame, func=lambda x: x.astype('float')) -> pd.DataFrame:
     """
-    Apply a given function to all categorical columns in the DataFrame.
+    Apply a given function to all categorical or object-type columns in the DataFrame.
 
     Args:
-        df (pd.DataFrame): Input DataFrame with various column types.
-        func (callable): A function to apply to all categorical columns  
+        data (pd.DataFrame): Input DataFrame with various column types.
+        func (callable): A function to apply to all categorical columns.
 
     Returns:
         pd.DataFrame: A new DataFrame with the function applied to categorical columns.
-    
-    Example:
-        mutate_if_factor(df, pd.to_numeric)
     """
-    # Apply the function only to numeric columns'
-    data_ = data.copy()
-    fct_cols = data_.select_dtypes(include=['object','category', 'string', 'bool']).columns
-    data_[fct_cols] = data_[fct_cols].apply(func)
+    # Select only columns that are categorical (e.g., object, category, bool)
+    factor_cols = data.select_dtypes(include=['object', 'category', 'bool']).columns
     
-    return data_
+    # Apply the function to these columns, without copying the entire DataFrame
+    data[factor_cols] = data[factor_cols].apply(func)
     
+    return data
+
 ## toolkit
 def kit_squishToRange(series, lower_percentile=0.01, upper_percentile=0.99):
     """
@@ -735,12 +729,25 @@ def draw_boxplot_num(data, y, title="Box Plot"):
     return boxplot
 
 def draw_boxplot_cat(data, by, y, title="Box Plot"):
+    """
+    Draw a boxplot for categorical 'by' column and a continuous 'y' column,
+    treating 'by' as categorical only within the function without altering the original data.
 
-    if data[by].dtype not in ['object','category', 'string', 'bool']:
-        data[by] = data[by].astype('object')
+    Args:
+        data (pd.DataFrame): Input DataFrame with various column types.
+        by (str): The column to group by (categorical).
+        y (str): The continuous variable for the box plot.
+        title (str): The title of the plot (default is 'Box Plot').
+
+    Returns:
+        plotnine.ggplot: Box plot visualizing the relationship between 'by' and 'y'.
+    """
+    data_ = data.copy()
+    if data_[by].dtype not in ['object','category', 'string', 'bool']:
+        data_[by] = data_[by].astype('object')
  
     boxplot = (
-        ggplot.ggplot(data) + 
+        ggplot.ggplot(data_) + 
         ggplot.geom_boxplot(ggplot.aes(x=by, y=y)) +                      
         ggplot.labs(title=title)              
     )
@@ -815,28 +822,29 @@ def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = N
     Example:
         plot_scatter(data=df, feature_x="age", feature_y="salary", title="Age vs Salary")
     """
+    data_ = data.copy()
     if by:
-        if data[by].dtype not in ['object','category', 'string', 'bool']:
-            if data[by].nunique() <= 10:
-                data[by] = data[by].astype('object')
+        if data_[by].dtype not in ['object','category', 'string', 'bool']:
+            if data_[by].nunique() <= 10:
+                data_[by] = data_[by].astype('object')
     if engine == 'ggplot':
         if by:
             p = (
-                ggplot.ggplot(data, ggplot.aes(x=feature_x, y=feature_y, color=by)) +
+                ggplot.ggplot(data_, ggplot.aes(x=feature_x, y=feature_y, color=by)) +
                 ggplot.geom_point() +
                 ggplot.labs(title=title, x=feature_x, y=feature_y)
             )
         else:
             p = (
-                ggplot.ggplot(data, ggplot.aes(x=feature_x, y=feature_y)) +
+                ggplot.ggplot(data_, ggplot.aes(x=feature_x, y=feature_y)) +
                 ggplot.geom_point(color="blue") +
                 ggplot.labs(title=title, x=feature_x, y=feature_y)
             )
     elif engine == 'plotly':
         if by:
-            p = px.scatter(data, x=feature_x, y=feature_y, color=by, title=title)
+            p = px.scatter(data_, x=feature_x, y=feature_y, color=by, title=title)
         else:
-            p = px.scatter(data, x=feature_x, y=feature_y, title=title)
+            p = px.scatter(data_, x=feature_x, y=feature_y, title=title)
         p.show()
     return p
 
