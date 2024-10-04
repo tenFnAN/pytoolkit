@@ -1,8 +1,8 @@
 # pytoolkit
 
-This package was created for learning purposes [tw](https://x.com/tennisMiner) 
+The package was created for learning purposes.
 
-## installation 
+## Installation 
 - pip install -e .
 - pip install git+https://github.com/tenFnAN/pytoolkit
 
