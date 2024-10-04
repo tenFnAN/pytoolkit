@@ -728,7 +728,7 @@ def draw_boxplot_num(data, y, title="Box Plot"):
     
     return boxplot
 
-def draw_boxplot_cat(data, by, y, title="Box Plot"):
+def draw_boxplot_cat(data, by, y, qn = None, title="Box Plot"):
     """
     Draw a boxplot for categorical 'by' column and a continuous 'y' column,
     treating 'by' as categorical only within the function without altering the original data.
@@ -744,6 +744,8 @@ def draw_boxplot_cat(data, by, y, title="Box Plot"):
     """
     data_ = data.copy()
     if data_[by].dtype not in ['object','category', 'string', 'bool']:
+        if qn is not None:
+            data_[by] = pd.qcut(data_[by], q=qn)
         data_[by] = data_[by].astype('object')
  
     boxplot = (
