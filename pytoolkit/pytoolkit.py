@@ -9,9 +9,14 @@ import plotly.express as px
 import plotnine as ggplot
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.model_selection import learning_curve
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 import scipy.stats as st
+
+from statsmodels.tsa.stattools import adfuller, kpss
+from statsmodels.stats.stattools import jarque_bera 
+from statsmodels.tsa.stattools import acf 
 
 import inspect
 # print(inspect.getsource(func))  # kod zrodlowy funkcji 
@@ -654,7 +659,27 @@ def mutate_if_numeric(data: pd.DataFrame, func=np.log1p) -> pd.DataFrame:
     
     return data_
 
+def mutate_if_factor(data: pd.DataFrame, func=lambda x:x.astype('float')) -> pd.DataFrame:
+    """
+    Apply a given function to all categorical columns in the DataFrame.
 
+    Args:
+        df (pd.DataFrame): Input DataFrame with various column types.
+        func (callable): A function to apply to all categorical columns  
+
+    Returns:
+        pd.DataFrame: A new DataFrame with the function applied to categorical columns.
+    
+    Example:
+        mutate_if_factor(df, pd.to_numeric)
+    """
+    # Apply the function only to numeric columns'
+    data_ = data.copy()
+    fct_cols = data_.select_dtypes(include=['object','category', 'string', 'bool']).columns
+    data_[fct_cols] = data_[fct_cols].apply(func)
+    
+    return data_
+    
 ## toolkit
 def kit_squishToRange(series, lower_percentile=0.01, upper_percentile=0.99):
     """
@@ -694,8 +719,9 @@ def kit_whiskers(feature: pd.Series):
 
 def kit_binarize_3way(cols, anchor_value = 0):
     # sklearn.preprocessing.Binarizer
+    # train['col'].apply(kit_binarize_3way)
     return np.where(cols > anchor_value, 1, np.where(cols < anchor_value, -1, 0))
-    
+
 ## plot
 def draw_boxplot_num(data, y, title="Box Plot"):
 
@@ -1066,8 +1092,38 @@ def draw_ml_residuals(X_val: pd.DataFrame, y_val: pd.core.series.Series, ml):
     ) 
     return plot1, plot2
 
-## Statistical tests
+def draw_ml_learning_curve(model, title, X, y, ylim=None, cv=None, n_jobs=1, train_sizes=np.linspace(.1, 1.0, 5)):
+    # draw_ml_learning_curve(ml_rf, "Learning Curves (Logistic Regression)", X, y, ylim=(0.7, 1.02), cv=cv, n_jobs=4)
+    # Calculate learning curve data
+    train_sizes, train_scores, test_scores = learning_curve(model, X, y, cv=cv, n_jobs=n_jobs, train_sizes=train_sizes)
+    
+    # Compute means and standard deviations
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+    
+    # Create a dataframe to hold data for plotting
+    data = pd.DataFrame({
+        'train_size': np.concatenate([train_sizes, train_sizes]),
+        'score_mean': np.concatenate([train_scores_mean, test_scores_mean]),
+        'score_std': np.concatenate([train_scores_std, test_scores_std]),
+        'dataset': ['Train'] * len(train_sizes) + ['Validation'] * len(train_sizes)
+    })
+    
+    # Plot the learning curve
+    p = (
+        ggplot.ggplot(data, ggplot.aes(x='train_size', y='score_mean', color='dataset')) +
+        ggplot.geom_line(size=1.5) +
+        ggplot.geom_ribbon(ggplot.aes(ymin='score_mean - score_std', ymax='score_mean + score_std', fill='dataset'), alpha=0.2) +
+        ggplot.labs(title=title, x='Training examples', y='Score') +
+        ggplot.theme_bw() +
+        ggplot.scale_x_continuous(breaks=train_sizes)  # Add breaks for training sizes
+    )
+    
+    return p 
 
+## Statistical tests 
 
 def test_cor_significance(data: pd.DataFrame, 
                          x : list,
@@ -1182,7 +1238,7 @@ def test_kruskal_significance(*groups, data=None, x=None, y=None, alpha=0.05 ):
     Returns:
         stat (float): Test statistic from the Kruskal-Wallis test.
         p (float): P-value from the test.
-
+    
     Example usage:
         1. Direct group input:
             test_kruskal_significance(group_1, group_2, group_3)
@@ -1244,6 +1300,51 @@ def test_normality(data: pd.DataFrame, x : str):
     p = draw_histogram(data, x)
     return p
 
+# ts
+def test_dickeyF(data, alpha=0.05):
+  print("==== Augmented DickeyFuller (Null hypothesis - The process is non-stationary): ")
+
+  result = adfuller(data, autolag='AIC')
+  print(f'ADF Statistic: {result[0]}')
+  print(f'p-value: {result[1]}')
+
+  if result[1] < alpha:
+    print("The process is stationary.\n")
+  else:
+    print("The process is non-stationary.\n")
+
+def test_kpss(data, alpha=0.05):
+  print('==== Kwiatkowski PhillipsSchmidtShin (KPSS) test (Null hypothesis - The process is stationary):')
+
+  kpsstest = kpss(data, regression='c')
+  print("KPSS Statistic = " + str(kpsstest[0]))
+  print( "p-value = " +str(kpsstest[1]))
+
+  if kpsstest[1] < alpha:
+    print("The process is non-stationary.\n")
+  else:
+    print("The process is stationary.\n")
+
+def test_Ljung_Box(data):
+  print('===H0: The residuals are independently distributed===')
+  print('ACF')
+  _, _, _, pval = acf(data, nlags=12, qstat=True, alpha=0.05)
+  
+  print('Null hypothesis is rejected for lags:', np.where(pval<=0.05))
+
+def test_jarq_bera(data, alpha = 0.05):
+    print('==== The Jarque-Bera test of normality (Null hypothesis - The distribution is normal):')
+    jarque_beratest = jarque_bera(data)
+
+    sns.histplot(x=data, bins=20) ; plt.show()
+
+    print("JB Statistic = " + str(jarque_beratest[0]))
+    print( "p-value = " +str(jarque_beratest[1]))
+
+    if jarque_beratest[1]< 0.05:
+        print("The distribution is non-normal.")
+    else:
+        print("The distribution is normal.")
 
 def reduce_mem_usage(df, verbose=True):
     """
