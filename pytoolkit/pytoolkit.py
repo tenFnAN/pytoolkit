@@ -920,9 +920,55 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, title="Custom Bar Plot
 
     return plot
 
-def draw_histogram(data, feature=None, title="Histogram", bins = 10):
-    # sns.histplot(data['emp.var.rate'])
-    if isinstance(data, pd.Series):
+def draw_histogram(data, feature=None, title="Histogram", bins=10):
+    """
+    Create a histogram for the specified feature from the given data.
+
+    This function can handle input data in the form of a pandas Series, 
+    pandas DataFrame, or a numpy ndarray. It generates a histogram using 
+    the specified number of bins.
+
+    Args:
+        data (Union[pd.Series, pd.DataFrame, np.ndarray]): 
+            The input data. Can be a pandas Series, a pandas DataFrame, 
+            or a numpy ndarray.
+        feature (str, optional): 
+            The name of the feature to plot if data is a DataFrame. 
+            If data is a numpy ndarray, this will be used as the column name.
+            Default is None.
+        title (str, optional): 
+            The title of the histogram. Default is "Histogram".
+        bins (int, optional): 
+            The number of bins for the histogram. Default is 10.
+
+    Returns:
+        ggplot.ggplot: 
+            A plotnine ggplot object representing the histogram.
+
+    Raises:
+        ValueError: 
+            If the input data is not a pandas Series, DataFrame, or 
+            numpy ndarray.
+    
+    Example:
+        # Using a pandas Series
+        series_data = pd.Series(np.random.randn(100))
+        plot1 = draw_histogram(series_data)
+
+        # Using a pandas DataFrame
+        df_data = pd.DataFrame({'feature1': np.random.randn(100)})
+        plot2 = draw_histogram(df_data, feature='feature1')
+
+        # Using a numpy ndarray
+        ndarray_data = np.random.randn(100)
+        plot3 = draw_histogram(ndarray_data, feature='feature1')  # feature name will be 'feature1'
+    """
+    # Check if data is a numpy ndarray
+    if isinstance(data, np.ndarray):
+        plot_data = pd.DataFrame(data, columns=['x'])  # Convert ndarray to DataFrame
+        feature_name = 'x'
+    # Check if data is a pandas Series
+    elif isinstance(data, pd.Series):
         feature_name = data.name
         plot_data = data.to_frame()
     # If data is a DataFrame, use the feature column
@@ -930,7 +976,7 @@ def draw_histogram(data, feature=None, title="Histogram", bins = 10):
         feature_name = feature
         plot_data = data[[feature]]
     else:
-        raise ValueError("Invalid input: data must be a pandas Series or DataFrame with a feature specified.")
+        raise ValueError("Invalid input: data must be a pandas Series, DataFrame with a feature specified, or a numpy ndarray.")
 
     plot = (
         ggplot.ggplot(plot_data, ggplot.aes(x=feature_name)) +
