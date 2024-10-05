@@ -206,7 +206,7 @@ def unique(data):
         1        B  2           x, y
         2        C  2      5.5, 6.6
     """
-    df_uniq = (data.melt().drop_duplicates().groupby('variable', as_index=False)
+    df_uniq = (data.melt().drop_duplicates().dropna().groupby('variable', as_index=False)
     .agg(n = ('value', 'nunique'), uniq = ('value', lambda x:','.join(map(str, sorted(x.unique())))) )
     .sort_values('n'))
     return df_uniq
@@ -719,7 +719,7 @@ def kit_binarize_3way(cols, anchor_value = 0):
 def kit_log_shift(data: pd.Series, shift: float = 6) -> pd.Series:
     """
     Apply a logarithmic transformation with a shift to a specified column in a DataFrame.
- 
+    np.log2(col + offset_log)
     """    
     return np.log2(data + shift)
 
@@ -728,6 +728,69 @@ def kit_log_shift_reverse(data: pd.Series, offset_log: float = 6) -> pd.Series:
     Reverse the logarithmic transformation with an offset.
     """ 
     return np.exp2(data) - offset_log
+
+def kit_cat_reorder(c, x, fun=np.median, ascending=True):
+    """
+    Reorder categorical by sorting along another variable
+
+    It is the order of the categories that changes. Values in x
+    are grouped by categories and summarised to determine the
+    new order.
+
+    Parameters
+    ----------
+    c : list-like
+        Values that will make up the categorical.
+    x : list-like
+        Values by which ``c`` will be ordered.
+    fun : callable
+        Summarising function to ``x`` for each category in ``c``.
+        Default is the *median*.
+    ascending : bool
+        If ``True``, the ``c`` is ordered in ascending order of ``x``.
+
+    Examples
+    --------
+    >>> cat_reorder(
+      c         = df['event_type'],
+      x         = df['frequency'],
+      fun       = np.mean,
+      ascending = False
+      )
+      
+    >>> c = list('abbccc')
+    >>> x = [11, 2, 2, 3, 33, 3]
+    >>> cat_reorder(c, x)
+    ['a', 'b', 'b', 'c', 'c', 'c']
+    Categories (3, object): ['b', 'c', 'a']
+    >>> cat_reorder(c, x, fun=max)
+    ['a', 'b', 'b', 'c', 'c', 'c']
+    Categories (3, object): ['b', 'a', 'c']
+    >>> cat_reorder(c, x, fun=max, ascending=False)
+    ['a', 'b', 'b', 'c', 'c', 'c']
+    Categories (3, object): ['c', 'a', 'b']
+    >>> c_ordered = pd.Categorical(c, ordered=True)
+    >>> cat_reorder(c_ordered, x)
+    ['a', 'b', 'b', 'c', 'c', 'c']
+    Categories (3, object): ['b' < 'c' < 'a']
+    >>> cat_reorder(c + ['d'], x)
+    Traceback (most recent call last):
+        ...
+    ValueError: Lengths are not equal. len(c) is 7 and len(x) is 6.
+    """
+    if len(c) != len(x):
+        raise ValueError(
+            "Lengths are not equal. len(c) is {} and len(x) is {}.".format(
+                len(c), len(x)
+            )
+        )
+    summary = (pd.Series(x)
+               .groupby(c)
+               .apply(fun)
+               .sort_values(ascending=ascending)
+               )
+    cats = summary.index.to_list()
+    return pd.Categorical(c, categories=cats)
 
 ## plot
 def draw_boxplot_num(data, y, title="Box Plot"):
@@ -1347,7 +1410,8 @@ def test_kruskal_significance(*groups, data=None, x=None, y=None, alpha=0.05 ):
     # Option 2: If data, x, and y are passed
     elif data is not None and x is not None and y is not None:
         # Create groups from the DataFrame based on unique values in column x
-        groups = [data[data[x] == val][y] for val in data[x].unique()]
+        data_ = data[[x, y]].dropna().copy()
+        groups = [data_[data_[x] == val][y] for val in data_[x].dropna().unique()]
         stat, p = st.kruskal(*groups)
     
     else:
