@@ -824,7 +824,7 @@ def draw_boxplot_cat(data, by, y, qn = None, title="Box Plot"):
             try:
                 data_[by] = pd.qcut(data_[by], q=qn)
             except:
-                data_[by] = pd.cut(data_[by], q=qn)
+                data_[by] = pd.cut(data_[by], bins=qn)
         data_[by] = data_[by].astype('object')
  
     boxplot = (
