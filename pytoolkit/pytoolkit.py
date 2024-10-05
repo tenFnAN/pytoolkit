@@ -850,10 +850,23 @@ def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = N
         p.show()
     return p
 
-def draw_barplot_cat(data, x, y = None, type = None, title="Custom Bar Plot", label_percent = False):
-    # Create the plot
-    # sns.barplot(pd.value_counts(target) )
-    # plt.title('distribution of target: has the client subscribed a term deposit?')
+def draw_barplot_cat(data, x, y=None, by=None, type=None, title="Custom Bar Plot", label_percent=False, ncol = 3):
+    """
+    Create a custom bar plot using plotnine (ggplot in Python).
+    
+    Args:
+        data (pd.DataFrame): The data to plot.
+        x (str): The column to use for the x-axis.
+        y (str, optional): The column to fill by (for grouped bar plots). Defaults to None.
+        by (str, optional): The column to facet by. Defaults to None.
+        type (str, optional): The type of bar plot ('dodge' for grouped bar plots). Defaults to None.
+        title (str, optional): The title of the plot. Defaults to "Custom Bar Plot".
+        label_percent (bool, optional): Whether to show percentage labels on the bars. Defaults to False.
+        
+    Returns:
+        ggplot: The plot object.
+    """
+
     def prop_per_x(x, count):
         """
         Compute the proportion of the counts for each value of x
@@ -863,35 +876,48 @@ def draw_barplot_cat(data, x, y = None, type = None, title="Custom Bar Plot", la
         return prop
 
     data_ = data.copy()
+
+    # Convert `y` to categorical if it's not already
     if y is not None:
-        if data_[y].dtype not in ['object','category', 'string', 'bool']:
+        if data_[y].dtype not in ['object', 'category', 'string', 'bool']:
             data_[y] = data_[y].astype('object')
+
+    # Basic plot without dodging
     if type is None:
         plot = (
             ggplot.ggplot(data_, ggplot.aes(x=x)) +
             ggplot.geom_bar() +
             ggplot.labs(title=title, x=x)
         )
+    
+    # Grouped bar plot (dodge)
     elif type == 'dodge':
-        # https://plotnine.org/tutorials/miscellaneous-show-counts-and-percentages-for-bar-plots.html
-        plot = (ggplot.ggplot(data_, ggplot.aes(x=x, fill=y)) +
-                ggplot.geom_bar(position=ggplot.position_dodge()) +
-                ggplot.theme(figure_size=(10, 4),  
-                    dpi=80,   
-                    axis_text_x=ggplot.element_text(rotation=45, hjust=1)) +   
-                ggplot.labs(x=x, y='Count')) 
-        if label_percent is not False:
+        plot = (
+            ggplot.ggplot(data_, ggplot.aes(x=x, fill=y)) +
+            ggplot.geom_bar(position=ggplot.position_dodge()) +
+            ggplot.theme(figure_size=(10, 4),
+                         dpi=80,
+                         axis_text_x=ggplot.element_text(rotation=45, hjust=1)) +
+            ggplot.labs(x=x, y='Count')
+        )
+        if label_percent:
             plot = (plot +
                 ggplot.geom_text(
-                ggplot.aes(
-                    label=ggplot.after_stat("prop_per_x(x, count) * 100"),
-                    y=ggplot.stage(after_stat="count", after_scale="y + 0.25"),
-                ),
-                stat="count",
-                position=ggplot.position_dodge2(width=0.9),
-                format_string="{:.1f}%",
-                size=9,
-            ))
+                    ggplot.aes(
+                        label=ggplot.after_stat("prop_per_x(x, count) * 100"),
+                        y=ggplot.stage(after_stat="count", after_scale="y + 0.25"),
+                    ),
+                    stat="count",
+                    position=ggplot.position_dodge2(width=0.9),
+                    format_string="{:.1f}%",
+                    size=9,
+                )
+            )
+
+    # Add facet wrap if `by` is provided
+    if by is not None:
+        plot += ggplot.facet_wrap(facets=by, ncol=ncol)
+
     return plot
 
 def draw_histogram(data, feature=None, title="Histogram", bins = 10):
