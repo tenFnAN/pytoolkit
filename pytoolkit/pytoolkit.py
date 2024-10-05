@@ -716,6 +716,19 @@ def kit_binarize_3way(cols, anchor_value = 0):
     # train['col'].apply(kit_binarize_3way)
     return np.where(cols > anchor_value, 1, np.where(cols < anchor_value, -1, 0))
 
+def kit_log_shift(data: pd.Series, shift: float = 6) -> pd.Series:
+    """
+    Apply a logarithmic transformation with a shift to a specified column in a DataFrame.
+ 
+    """    
+    return np.log2(data + shift)
+
+def kit_log_shift_reverse(data: pd.Series, offset_log: float = 6) -> pd.Series:
+    """
+    Reverse the logarithmic transformation with an offset.
+    """ 
+    return np.exp2(data) - offset_log
+
 ## plot
 def draw_boxplot_num(data, y, title="Box Plot"):
 
