@@ -181,7 +181,7 @@ def status(data):
     d_freq = {} 
     for c in data2.columns:
         stat_freq = _freq_tbl_logic(data2[c], c).loc[0,:]
-        d_freq[c] = {'p_D': stat_freq.iloc[2], 'D': stat_freq.iloc[0]}}
+        d_freq[c] = {'p_D': stat_freq.iloc[2], 'D': stat_freq.iloc[0]}
     d2 = d2.merge(pd.DataFrame(d_freq).T.assign(p_D = lambda x:round(x['p_D'].astype('float'),2)),left_on='variable', right_index=True )
 
     return d2
