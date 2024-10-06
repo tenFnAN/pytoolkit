@@ -909,7 +909,7 @@ def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = N
         p.show()
     return p
 
-def draw_barplot_cat(data, x, y=None, by=None, type=None, title="Custom Bar Plot", label_percent=False, ncol = 3):
+def draw_barplot_cat(data, x, y=None, by=None, type=None, qn = None, title="Custom Bar Plot", label_percent=False, ncol = 3):
     """
     Create a custom bar plot using plotnine (ggplot in Python).
     
@@ -940,6 +940,12 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, title="Custom Bar Plot
     if y is not None:
         if data_[y].dtype not in ['object', 'category', 'string', 'bool']:
             data_[y] = data_[y].astype('object')
+    if qn is not None and data_[x].dtype not in ['object', 'category', 'string', 'bool']:
+        try:
+            data_[x] = pd.qcut(data_[x], q=qn).astype('object')
+        except:
+            print('qcut fail')
+            data_[x] = pd.cut(data_[x], bins=qn).astype('object')
 
     # Basic plot without dodging
     if type is None:
@@ -957,7 +963,7 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, title="Custom Bar Plot
             ggplot.theme(figure_size=(10, 4),
                          dpi=80,
                          axis_text_x=ggplot.element_text(rotation=45, hjust=1)) +
-            ggplot.labs(x=x, y='Count')
+            ggplot.labs(title=x, y='Count')
         )
         if label_percent:
             plot = (plot +
