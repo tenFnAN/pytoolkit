@@ -650,10 +650,11 @@ def mutate_if_numeric(data: pd.DataFrame, func=np.log1p) -> pd.DataFrame:
         pd.DataFrame: A new DataFrame with the function applied to numeric columns.
     """
     # Select only numeric columns and apply the function
-    numeric_cols = data.select_dtypes(include=[np.number]).columns
-    data[numeric_cols] = data[numeric_cols].apply(func)
+    data_copy = data.copy()
+    numeric_cols = data_copy.select_dtypes(include=[np.number]).columns
+    data_copy[numeric_cols] = data_copy[numeric_cols].apply(func)
     
-    return data
+    return data_copy
 
 def mutate_if_factor(data: pd.DataFrame, func=lambda x: x.astype('float')) -> pd.DataFrame:
     """
@@ -667,12 +668,13 @@ def mutate_if_factor(data: pd.DataFrame, func=lambda x: x.astype('float')) -> pd
         pd.DataFrame: A new DataFrame with the function applied to categorical columns.
     """
     # Select only columns that are categorical (e.g., object, category, bool)
-    factor_cols = data.select_dtypes(include=['object', 'category', 'bool']).columns
+    data_copy = data.copy()
+    factor_cols = data_copy.select_dtypes(include=['object', 'category', 'bool']).columns
     
     # Apply the function to these columns, without copying the entire DataFrame
-    data[factor_cols] = data[factor_cols].apply(func)
+    data_copy[factor_cols] = data_copy[factor_cols].apply(func)
     
-    return data
+    return data_copy
 
 ## toolkit
 def kit_squishToRange(series, lower_percentile=0.01, upper_percentile=0.99):
