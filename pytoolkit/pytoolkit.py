@@ -300,7 +300,7 @@ def profiling_num(data):
     # variation_coef
     des1['cv']=des1['std_dev']/des1['mean']
     
-    d_quant=d.quantile([0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99]).transpose().add_prefix('p_')
+    d_quant=d.quantile([0, 0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99, 1]).transpose().add_prefix('p_')
     
     des2=des1.join(d_quant, how='outer')
     
