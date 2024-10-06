@@ -175,7 +175,16 @@ def status(data):
     # get data types per column
     d2['type']=[str(x) for x in data2.dtypes.values]
     
-    return(d2)
+    # mode
+    # id_cols = d2[d2['unique'] == tot_rows]['variable'] 
+    # d2 = d2.merge(data2.drop(columns=id_cols, errors='ignore').mode().T.rename(columns={0:'D'}),left_on='variable', right_index=True )
+    d_freq = {} 
+    for c in data2.columns:
+        stat_freq = _freq_tbl_logic(data2[c], c).loc[0,:]
+        d_freq[c] = {'p_D' : stat_freq[2], 'D':stat_freq[0]}
+    d2 = d2.merge(pd.DataFrame(d_freq).T.assign(p_D = lambda x:round(x['p_D'].astype('float'),2)),left_on='variable', right_index=True )
+
+    return d2
 
 def unique(data):
     """
@@ -677,6 +686,8 @@ def mutate_if_factor(data: pd.DataFrame, func=lambda x: x.astype('float')) -> pd
     return data_copy
 
 ## toolkit
+def kit_encoder_ordinal_fast(x): return pd.factorize(x)[0]
+
 def kit_squishToRange(series, lower_percentile=0.01, upper_percentile=0.99):
     """
     Clips the values in a series to the specified lower and upper percentiles.
