@@ -729,68 +729,46 @@ def kit_log_shift_reverse(data: pd.Series, offset_log: float = 6) -> pd.Series:
     """ 
     return np.exp2(data) - offset_log
 
-def kit_cat_reorder(c, x, fun=np.median, ascending=True):
+def kit_cat_reorder(df, cat_column, feature_column, fun=np.median, ascending=True):
     """
-    Reorder categorical by sorting along another variable
-
-    It is the order of the categories that changes. Values in x
-    are grouped by categories and summarised to determine the
-    new order.
-
+    Reorder categorical column in a dataframe by sorting it along another feature column.
+    
     Parameters
     ----------
-    c : list-like
-        Values that will make up the categorical.
-    x : list-like
-        Values by which ``c`` will be ordered.
+    df : pd.DataFrame
+        The input dataframe containing the categorical and feature columns.
+    cat_column : str
+        The name of the categorical column to reorder.
+    feature_column : str
+        The name of the feature column by which the categorical column will be ordered.
     fun : callable
-        Summarising function to ``x`` for each category in ``c``.
-        Default is the *median*.
+        A function to summarize the feature column for each category (default is np.median).
     ascending : bool
-        If ``True``, the ``c`` is ordered in ascending order of ``x``.
-
-    Examples
-    --------
-    >>> cat_reorder(
-      c         = df['event_type'],
-      x         = df['frequency'],
-      fun       = np.mean,
-      ascending = False
-      )
-      
-    >>> c = list('abbccc')
-    >>> x = [11, 2, 2, 3, 33, 3]
-    >>> cat_reorder(c, x)
-    ['a', 'b', 'b', 'c', 'c', 'c']
-    Categories (3, object): ['b', 'c', 'a']
-    >>> cat_reorder(c, x, fun=max)
-    ['a', 'b', 'b', 'c', 'c', 'c']
-    Categories (3, object): ['b', 'a', 'c']
-    >>> cat_reorder(c, x, fun=max, ascending=False)
-    ['a', 'b', 'b', 'c', 'c', 'c']
-    Categories (3, object): ['c', 'a', 'b']
-    >>> c_ordered = pd.Categorical(c, ordered=True)
-    >>> cat_reorder(c_ordered, x)
-    ['a', 'b', 'b', 'c', 'c', 'c']
-    Categories (3, object): ['b' < 'c' < 'a']
-    >>> cat_reorder(c + ['d'], x)
-    Traceback (most recent call last):
-        ...
-    ValueError: Lengths are not equal. len(c) is 7 and len(x) is 6.
+        If True, order the categorical column in ascending order of the summarized feature column.
+    
+    Returns
+    -------
+    pd.DataFrame
+        A new dataframe with the categorical column reordered.
     """
-    if len(c) != len(x):
+    df_copy = df.copy()  # Create a copy of the input dataframe
+    if len(df_copy[cat_column]) != len(df_copy[feature_column]):
         raise ValueError(
-            "Lengths are not equal. len(c) is {} and len(x) is {}.".format(
-                len(c), len(x)
+            "Lengths are not equal. len(cat_column) is {} and len(feature_column) is {}.".format(
+                len(df_copy[cat_column]), len(df_copy[feature_column])
             )
         )
-    summary = (pd.Series(x)
-               .groupby(c)
+    # Summarize the feature column for each category in the categorical column
+    summary = (df_copy[feature_column]
+               .groupby(df_copy[cat_column])
                .apply(fun)
                .sort_values(ascending=ascending)
                )
-    cats = summary.index.to_list()
-    return pd.Categorical(c, categories=cats)
+    # Reorder the categorical column
+    reordered_cats = pd.Categorical(df_copy[cat_column], categories=summary.index)
+    df_copy[cat_column] = reordered_cats
+
+    return df_copy
 
 ## plot
 def draw_boxplot_num(data, y, title="Box Plot"):
@@ -997,6 +975,72 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, title="Custom Bar Plot
     if by is not None:
         plot += ggplot.facet_wrap(facets=by, ncol=ncol)
 
+    return plot
+
+def draw_count_plot(data, x, y, title=' ', engine='plotly'):
+    """
+    Draws a count plot (bar plot) to visualize the relationship between a categorical variable (x) 
+    and a numerical variable (y). The plot can be generated using either `ggplot` or `plotly`.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The input dataframe containing the data to plot.
+    x : str
+        The name of the categorical column to be shown on the x-axis.
+    y : str
+        The name of the numerical column to be shown on the y-axis.
+    title : str, optional
+        The title of the plot. Default is an empty string.
+    engine : str, optional
+        The plotting engine to use. Can be 'ggplot' or 'plotly'. Default is 'plotly'.
+
+    Returns
+    -------
+    plot
+        The generated plot based on the specified engine.
+        
+        - For `plotly`, returns a plotly.graph_objects.Figure object.
+        - For `ggplot`, returns a plotnine.ggplot object.
+    
+    Notes
+    -----
+    - For `ggplot`, the categorical variable `x` is reordered using `kit_cat_reorder` based on the `y` values.
+    - For `plotly`, the data is sorted by `y` values in descending order, and the x-axis labels are rotated.
+    
+    Examples
+    --------
+    >>> # Using plotly
+    >>> plot = draw_count_plot(df_descr, 'variable', 'p_nan', title='Plotly Bar Plot', engine='plotly')
+    >>> plot.show()
+
+    >>> # Using ggplot
+    >>> plot = draw_count_plot(df_descr, 'variable', 'p_nan', title='GGPlot Bar Plot', engine='ggplot')
+    >>> print(plot)
+    """
+    
+    if engine == 'ggplot':
+        plot = (
+            ggplot.ggplot(data.pipe(kit_cat_reorder, x, y), ggplot.aes(x=x, y=y)) +
+            ggplot.geom_bar(stat='identity', fill='skyblue', color='black') +
+            ggplot.labs(title=title, x='Variable', y='Percentage of NaN') +
+            ggplot.theme(axis_text_x=ggplot.element_text(rotation=45, hjust=1)) +
+            ggplot.coord_flip()
+        )
+    
+    elif engine == 'plotly':
+        plot = px.bar(
+            data.sort_values(by=y, ascending=False),
+            x=x,
+            y=y,
+            title=title,
+            # Optionally add labels or text here if needed
+            # labels=title, 
+            # text=y 
+        )
+         
+        plot.update_xaxes(tickangle=45)
+    
     return plot
 
 def draw_histogram(data, feature=None, title="Histogram", bins=10):
