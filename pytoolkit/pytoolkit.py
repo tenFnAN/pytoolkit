@@ -269,7 +269,6 @@ def cat_vars(data, exclude_var=None):
         cat_v=cat_v.drop(exclude_var)
     return cat_v
 
-
 def profiling_num(data):
     """
     Get a metric table with many indicators for all numerical variables, automatically skipping the non-numerical variables. Current metrics are: mean, std_dev: standard deviation, all the p_XX: percentile at XX number, skewness, kurtosis, iqr: inter quartile range, variation_coef: the ratio of sd/mean, range_98 is the limit for which the 98% of fall, range_80 similar to range_98 but with 80%. All NA values will be skipped from calculations.
@@ -311,9 +310,10 @@ def profiling_num(data):
     des_final=des_final.reset_index(drop=True)
     des_final = des_final.merge(d.skew().reset_index().rename(columns={0:'skew'}),left_on='variable', right_on='index' )
 
-    des_final=des_final[['variable', 'mean', 'std_dev','cv', 'skew', 'p_0', 'p_0.01', 'p_0.05', 'p_0.25', 'p_0.5', 'p_0.75', 'p_0.95', 'p_0.99', 'p_1']]
-    des_final = des_final.rename(columns = {'p_0' : 'min', 'p_1' : 'max'})
+    des_final=des_final[['variable', 'mean', 'std_dev','cv', 'skew', 'p_0.0', 'p_0.01', 'p_0.05', 'p_0.25', 'p_0.5', 'p_0.75', 'p_0.95', 'p_0.99', 'p_1.0']]
+    des_final = des_final.rename(columns = {'p_0.0' : 'min', 'p_1.0' : 'max'})
     return des_final.round(2)
+
 
 def feat_cor(data, method='pearson'):
     """
