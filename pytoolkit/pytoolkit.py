@@ -555,14 +555,14 @@ def _freq_tbl_logic(var, name):
 
     """
     cnt=var.value_counts()
-    df_res=pd.DataFrame({'frequency': var.value_counts(), 'percentage': var.value_counts()/len(var)})
+    df_res=pd.DataFrame({'frequency': var.value_counts(), 'percentage': round(var.value_counts()/len(var),3)})
     df_res.reset_index(drop=True)
     
     df_res[name] = df_res.index
     
     df_res=df_res.reset_index(drop=True)
     
-    df_res['cumulative_perc'] = df_res.percentage.cumsum()/df_res.percentage.sum()
+    df_res['cumulative_perc'] = round(df_res.percentage.cumsum()/df_res.percentage.sum(),3)
     
     df_res=df_res[[name, 'frequency', 'percentage', 'cumulative_perc']]
     
