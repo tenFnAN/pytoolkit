@@ -311,8 +311,8 @@ def profiling_num(data):
     des_final=des_final.reset_index(drop=True)
     des_final = des_final.merge(d.skew().reset_index().rename(columns={0:'skew'}),left_on='variable', right_on='index' )
 
-    des_final=des_final[['variable', 'mean', 'std_dev','cv', 'skew', 'min', 'p_0.01', 'p_0.05', 'p_0.25', 'p_0.5', 'p_0.75', 'p_0.95', 'p_0.99', 'max']]
-     
+    des_final=des_final[['variable', 'mean', 'std_dev','cv', 'skew', 'p_0', 'p_0.01', 'p_0.05', 'p_0.25', 'p_0.5', 'p_0.75', 'p_0.95', 'p_0.99', 'p_1']]
+    des_final = des_final.rename(columns = {'p_0' : 'min', 'p_1' : 'max'})
     return des_final.round(2)
 
 def feat_cor(data, method='pearson'):
