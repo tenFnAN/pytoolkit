@@ -916,9 +916,9 @@ def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = N
             )
     elif engine == 'plotly':
         if by:
-            p = px.scatter(data_, x=feature_x, y=feature_y, color=by, title=title)
+            p = px.scatter(data_, x=feature_x, y=feature_y, color=by, title=title).update_traces(mode='lines+markers')
         else:
-            p = px.scatter(data_, x=feature_x, y=feature_y, title=title)
+            p = px.scatter(data_, x=feature_x, y=feature_y, title=title).update_traces(mode='lines+markers')
         p.show()
     return p
 
@@ -992,7 +992,8 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, qn = None, title="Cust
                     size=9,
                 )
             )
-    elif type == 'stacked': 
+    elif type == 'stacked':
+
       data_grouped = data_.groupby([x, y], as_index = False).size()
       data_grouped[x] = data_grouped[x].astype('str')
       data_grouped['proportion'] = data_grouped.groupby(x)['size'].transform(lambda x: round(x / x.sum() * 100,2))
