@@ -687,7 +687,9 @@ def mutate_if_factor(data: pd.DataFrame, func=lambda x: x.astype('float')) -> pd
 
 ## toolkit
 def kit_encoder_ordinal_fast(x): return pd.factorize(x)[0]
-
+def kit_cat_indices(data, columns):
+    return sorted([data.columns.get_loc(col) for col in columns])
+    
 def kit_squishToRange(series, lower_percentile=0.01, upper_percentile=0.99):
     """
     Clips the values in a series to the specified lower and upper percentiles.
