@@ -922,6 +922,7 @@ def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = N
         p.show()
     return p
 
+
 def draw_barplot_cat(data, x, y=None, by=None, type=None, qn = None, title="Custom Bar Plot", label_percent=False, ncol = 3):
     """
     Create a custom bar plot using plotnine (ggplot in Python).
@@ -955,10 +956,10 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, qn = None, title="Cust
             data_[y] = data_[y].astype('object')
     if qn is not None and data_[x].dtype not in ['object', 'category', 'string', 'bool']:
         try:
-            data_[x] = pd.qcut(data_[x], q=qn).astype('object')
+            data_[x] = pd.qcut(round(data_[x],3), q=qn).astype('object')
         except:
             print('qcut fail')
-            data_[x] = pd.cut(data_[x], bins=qn).astype('object')
+            data_[x] = pd.cut(round(data_[x],3), bins=qn).astype('object')
 
     # Basic plot without dodging
     if type is None:
@@ -991,7 +992,30 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, qn = None, title="Cust
                     size=9,
                 )
             )
+    elif type == 'stacked': 
+      data_grouped = data_.groupby([x, y], as_index = False).size()
+      data_grouped[x] = data_grouped[x].astype('str')
+      data_grouped['proportion'] = data_grouped.groupby(x)['size'].transform(lambda x: round(x / x.sum() * 100,2))
+      data_grouped[y] = data_grouped[y].astype('object')
 
+      plot = px.bar(
+                data_grouped,
+                x=x,
+                y='proportion',
+                color=y,
+                title=title,
+                labels={'proportion': 'Proportion (%)'},
+                text='proportion'  # Add percentages as text on the bars
+            ) 
+          
+      plot.update_layout(
+          barmode='stack',  # Stacked bar plot
+          yaxis=dict(range=[0, 100]),   
+          xaxis_title=x,
+          yaxis_title='Proportion (%)',
+      )
+ 
+      plot.update_traces(texttemplate='%{text:.2f}%', textposition='inside')
     # Add facet wrap if `by` is provided
     if by is not None:
         plot += ggplot.facet_wrap(facets=by, ncol=ncol)
