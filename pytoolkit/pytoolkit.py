@@ -689,7 +689,7 @@ def mutate_if_factor(data: pd.DataFrame, func=lambda x: x.astype('float')) -> pd
 def kit_encoder_ordinal_fast(x): return pd.factorize(x)[0]
 def kit_cat_indices(data, columns):
     return sorted([data.columns.get_loc(col) for col in columns])
-    
+
 def kit_squishToRange(series, lower_percentile=0.01, upper_percentile=0.99):
     """
     Clips the values in a series to the specified lower and upper percentiles.
@@ -1143,30 +1143,48 @@ def draw_histogram_all(data, ncol = 3):
     return p
 
 
-def draw_density(data, feature, by = None, title="Density", alpha = 0.5):
+def draw_density(data, feature, by = None, title="Density", alpha = 0.5, engine='ggplot'):
     # sns.distplot(data['emp.var.rate'])
     data_ = data.copy()
-    if by is None:
-       plot = (
-            ggplot.ggplot(data_, ggplot.aes(x=feature )) +
-            ggplot.geom_density( alpha = alpha)  )
-    else:
-        if data_[by].dtype not in ['object','category', 'string', 'bool']:
-            data_[by] = data_[by].astype('object')
-        plot = (
-            ggplot.ggplot(data_, ggplot.aes(x=feature, fill = by )) +
-            ggplot.geom_density( alpha = alpha)  )
- 
-    return plot
+    if engine == 'ggplot':
+        if by is None:
+            p = ( ggplot.ggplot(data_, ggplot.aes(x=feature )) +
+                  ggplot.geom_density( alpha = alpha)  )
+        else:
+            if data_[by].dtype not in ['object','category', 'string', 'bool']:
+                data_[by] = data_[by].astype('object')
+            p = (
+                ggplot.ggplot(data_, ggplot.aes(x=feature, fill = by )) +
+                ggplot.geom_density( alpha = alpha)  ) 
+        return p
+    elif engine == 'plotly':
+            p = px.histogram(
+                data_,
+                x=feature,
+                color=by, 
+                histnorm='density',  
+                title=title
+            ) 
+            p.update_traces(opacity=alpha) 
+            p.update_layout(showlegend=True, title=title)
+            
+            return p
 
-def draw_density_all(data, ncol=3):
-    # Reshape the DataFrame from wide to long format
-    data_long = pd.melt(data[num_vars(data)])
+    else:
+        raise ValueError("Invalid engine! Please choose either 'ggplot' or 'plotly'.")
+
+def draw_density_all(data, by = None, ncol=3):
+    # Reshape the DataFrame from wide to long format 
+    if by is not None:
+        data[by] = data[by].astype('object')
+        data_long = pd.melt(data[ list(num_vars(data)) + [by] ], id_vars=by)
+    else:
+        data_long = pd.melt(data[ list(num_vars(data))], id_vars=by)
 
     # Create the density plot
     p = (
-        ggplot.ggplot(data_long, ggplot.aes(x='value', fill='variable')) +
-        ggplot.geom_density(alpha=0.5) +  # Use alpha for transparency
+        ggplot.ggplot(data_long, ggplot.aes(x='value', fill = by if by is not None else 'variable' )) +
+        ggplot.geom_density(alpha=0.5) +  
         ggplot.facet_wrap('variable', scales='free', ncol=ncol) +
         ggplot.theme_bw() + 
         ggplot.theme(legend_position='bottom')
