@@ -880,7 +880,7 @@ def draw_pairplot(data, cols, target, engine = 'ggplot'):
     return plot
 
 
-def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = None, title: str = "Scatter Plot", engine = 'ggplot'):
+def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = None, kind = 'line', title: str = "Scatter Plot", engine = 'ggplot'):
     """
     Create a scatter plot using plotnine for two features from the given DataFrame.
 
@@ -916,9 +916,11 @@ def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = N
             )
     elif engine == 'plotly':
         if by:
-            p = px.scatter(data_, x=feature_x, y=feature_y, color=by, title=title).update_traces(mode='lines+markers')
+            p = px.scatter(data_, x=feature_x, y=feature_y, color=by, title=title)
         else:
-            p = px.scatter(data_, x=feature_x, y=feature_y, title=title).update_traces(mode='lines+markers')
+            p = px.scatter(data_, x=feature_x, y=feature_y, title=title)
+        if kind == 'line':
+            p = p.update_traces(mode='lines+markers')
         p.show()
     return p
 
