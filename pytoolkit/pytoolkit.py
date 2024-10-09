@@ -728,7 +728,7 @@ def kit_whiskers(feature: pd.Series):
     outl_r = Q3 + 1.5 * IQR
     print(f'Left whisker: {outl_l}\nRight whisker: {outl_r}')
     return outl_l, outl_r
-    
+
 def kit_binarize_3way(cols, anchor_value = 0):
     # sklearn.preprocessing.Binarizer
     # train['col'].apply(kit_binarize_3way)
@@ -1161,8 +1161,7 @@ def draw_histogram(data, feature=None, title="Histogram", bins=10):
 
 def draw_histogram_all(data, ncol = 3): 
     data_long = pd.melt(data[num_vars(data)])
-
-    # Create the plot
+ 
     p = (
         ggplot.ggplot(data_long, ggplot.aes(x='value')) +
         ggplot.geom_histogram(bins=30) +
@@ -1172,6 +1171,19 @@ def draw_histogram_all(data, ncol = 3):
 
     return p
 
+def draw_barplot_all(data, features = None, ncol = 3): 
+    if features is None:
+        features = cat_vars(data)
+    data_long = pd.melt(data[features]) 
+ 
+    p = (
+        ggplot.ggplot(data_long, ggplot.aes( x='value')) +
+        ggplot.geom_bar() +
+        ggplot.facet_wrap('variable', scales='free', ncol=ncol) +
+        ggplot.theme_bw()
+    )
+
+    return p
 
 def draw_density(data, feature, by = None, title="Density", alpha = 0.5, engine='ggplot'):
     # sns.distplot(data['emp.var.rate'])
