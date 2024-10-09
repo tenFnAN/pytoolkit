@@ -685,6 +685,33 @@ def mutate_if_factor(data: pd.DataFrame, func=lambda x: x.astype('float')) -> pd
     
     return data_copy
 
+def mutate_at(data: pd.DataFrame, cols: list, func=np.log1p) -> pd.DataFrame:
+    """
+    Apply a given function to specific columns in a DataFrame.
+
+    This function creates a copy of the input DataFrame and applies the given transformation function
+    to the specified columns.
+
+    Args:
+        data (pd.DataFrame): The input DataFrame.
+        cols (list): A list of column names (as strings) to which the function should be applied.
+        func (callable): The function to apply to the specified columns. Default is np.log1p (natural logarithm of 1 + x).
+
+    Returns:
+        pd.DataFrame: A new DataFrame with the transformation applied to the specified columns.
+    
+    Example:
+        df_transformed = mutate_at(df, cols=['col1', 'col2'], func=np.log)
+    """
+    # Create a copy of the DataFrame to avoid modifying the original data
+    data_copy = data.copy()
+    
+    # Apply the function to the specified columns
+    data_copy[cols] = data_copy[cols].apply(func)
+    
+    return data_copy
+
+
 ## toolkit
 def kit_encoder_ordinal_fast(x): return pd.factorize(x)[0]
 def kit_cat_indices(data, columns):
