@@ -845,6 +845,18 @@ def draw_boxplot_all(data, ncol = 3):
 
     return p
 
+def draw_distr(feature, title='', bins='auto'):
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(11,9))
+
+    sns.histplot(x=feature, bins=bins, ax=ax1)
+    ax1.set_title(f'Distribution of {title}')
+
+    sns.boxplot(x=feature, ax=ax2)
+    ax2.set_xlabel(f' ')
+
+    plt.show()
+
+
 def draw_pairplot(data, cols, target, engine = 'ggplot'):
     # Long format to plot pairwise relationships
     # df_long = pd.melt(data, id_vars=[target], value_vars=cols, var_name='Feature', value_name='Value')
