@@ -702,30 +702,33 @@ def kit_calc_range(lst):
     return max(lst) - min(lst)
 
 def kit_whiskers(feature: pd.Series):
-  """
-    Calculate and print the lower and upper whiskers (1.5 * IQR rule) for detecting outliers 
-    in a given numerical feature using the Interquartile Range (IQR).
-
-    Args:
-        feature (pd.Series): A pandas Series representing the numerical data for which whiskers are calculated.
-        
-    Prints:
-        Left whisker: The lower bound for detecting outliers (Q1 - 1.5 * IQR).
-        Right whisker: The upper bound for detecting outliers (Q3 + 1.5 * IQR).
-        
-    Example:
-        feature = pd.Series([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-        calc_whiskers(feature)
-        
-        Output:
-            Left whisker: -5.5
-            Right whisker: 15.5
     """
-  Q1 = np.percentile(feature, 25)
-  Q3 = np.percentile(feature, 75)
-  IQR = Q3 - Q1
-  print(f'Left whisker: {Q1 - 1.5 * IQR}\nRight whisker: {Q3 + 1.5 * IQR}')
+        Calculate and print the lower and upper whiskers (1.5 * IQR rule) for detecting outliers 
+        in a given numerical feature using the Interquartile Range (IQR).
 
+        Args:
+            feature (pd.Series): A pandas Series representing the numerical data for which whiskers are calculated.
+            
+        Prints:
+            Left whisker: The lower bound for detecting outliers (Q1 - 1.5 * IQR).
+            Right whisker: The upper bound for detecting outliers (Q3 + 1.5 * IQR).
+            
+        Example:
+            feature = pd.Series([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+            calc_whiskers(feature)
+            
+            Output:
+                Left whisker: -5.5
+                Right whisker: 15.5
+        """
+    Q1 = np.percentile(feature, 25)
+    Q3 = np.percentile(feature, 75)
+    IQR = Q3 - Q1
+    outl_l = Q1 - 1.5 * IQR
+    outl_r = Q3 + 1.5 * IQR
+    print(f'Left whisker: {outl_l}\nRight whisker: {outl_r}')
+    return outl_l, outl_r
+    
 def kit_binarize_3way(cols, anchor_value = 0):
     # sklearn.preprocessing.Binarizer
     # train['col'].apply(kit_binarize_3way)
