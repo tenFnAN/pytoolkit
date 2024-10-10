@@ -966,7 +966,7 @@ def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = N
     return p
 
 
-def draw_barplot_cat(data, x, y=None, by=None, type=None, qn = None, title="Custom Bar Plot", label_percent=False, ncol = 3):
+def draw_barplot_cat(data, x, y=None, by=None, type=None, qn = None, title="Custom Bar Plot", label_percent=False, ncol = 3, reverse_axis = False):
     """
     Create a custom bar plot using plotnine (ggplot in Python).
     
@@ -991,6 +991,8 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, qn = None, title="Cust
         prop = df["count"] / df.groupby("x")["count"].transform("sum")
         return prop
 
+    if reverse_axis:
+        x, y = y, x
     data_ = data.copy()
 
     # Convert `y` to categorical if it's not already
