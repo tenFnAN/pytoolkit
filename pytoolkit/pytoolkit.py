@@ -963,7 +963,6 @@ def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = N
             p = px.scatter(data_, x=feature_x, y=feature_y, title=title)
         if kind == 'line':
             p = p.update_traces(mode='lines+markers')
-        p.show()
     return p
 
 
