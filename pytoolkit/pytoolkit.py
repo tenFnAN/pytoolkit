@@ -535,8 +535,8 @@ def feat_cor_pca(data_corr, n_cluster = 3, n_dim = 2, target = None):
     fig.update_traces(textposition='top center', textfont=dict(size=12))
 
     # Show the plot
-    fig.show()  
-
+    # fig.show()  
+    return fig
 def _freq_tbl_logic(var, name):
     """
     For internal use. Related to `freq_tbl`.
