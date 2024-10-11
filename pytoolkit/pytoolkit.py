@@ -827,7 +827,7 @@ def draw_boxplot_num(data, y, title="Box Plot"):
     
     return boxplot
 
-def draw_boxplot_cat(data, by, y, qn = None, title="Box Plot"):
+def draw_boxplot_cat(data, by, y, qn = None, title="Box Plot", width=10, height=6):
     """
     Draw a boxplot for categorical 'by' column and a continuous 'y' column,
     treating 'by' as categorical only within the function without altering the original data.
@@ -842,18 +842,22 @@ def draw_boxplot_cat(data, by, y, qn = None, title="Box Plot"):
         plotnine.ggplot: Box plot visualizing the relationship between 'by' and 'y'.
     """
     data_ = data.copy()
-    if data_[by].dtype not in ['object','category', 'string', 'bool']:
+    
+    # Convert 'by' to categorical if it's not already, or apply quantile/bin splitting if necessary
+    if data_[by].dtype not in ['object', 'category', 'string', 'bool']:
         if qn is not None:
             try:
                 data_[by] = pd.qcut(data_[by], q=qn)
             except:
                 data_[by] = pd.cut(data_[by], bins=qn)
         data_[by] = data_[by].astype('object')
- 
+
+    # Creating the boxplot with specified figure size
     boxplot = (
         ggplot.ggplot(data_) + 
         ggplot.geom_boxplot(ggplot.aes(x=by, y=y)) +                      
-        ggplot.labs(title=title)              
+        ggplot.labs(title=title) + 
+        ggplot.theme(figure_size=(width, height))  # Set figure size here
     )
     
     return boxplot
@@ -872,15 +876,35 @@ def draw_boxplot_all(data, ncol = 3):
 
     return p
 
-def draw_distr(feature, title='', bins='auto'):
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(11,9))
+import matplotlib.pyplot as plt
+import seaborn as sns
 
+def draw_distr(feature, title='', bins='auto', width=11, height=9):
+    """
+    Draws a distribution plot (histogram and boxplot) for the given feature.
+
+    Args:
+        feature (array-like): The data to plot.
+        title (str, optional): Title for the plot. Defaults to an empty string.
+        bins (str or int, optional): Number of bins or binning strategy for the histogram. Defaults to 'auto'.
+        width (int, optional): The width of the figure in inches. Defaults to 11.
+        height (int, optional): The height of the figure in inches. Defaults to 9.
+
+    Returns:
+        None: The function displays the plot.
+    """
+    # Create subplots with the specified figure size
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(width, height))
+
+    # Plot the histogram
     sns.histplot(x=feature, bins=bins, ax=ax1)
     ax1.set_title(f'Distribution of {title}')
 
+    # Plot the boxplot
     sns.boxplot(x=feature, ax=ax2)
     ax2.set_xlabel(f' ')
 
+    # Display the plot
     plt.show()
 
 
@@ -922,51 +946,68 @@ def draw_pairplot(data, cols, target, engine = 'ggplot'):
     return plot
 
 
-def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = None, kind = 'line', title: str = "Scatter Plot", engine = 'ggplot'):
+def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = None, kind='line', title: str = "Scatter Plot", engine='ggplot', width=10, height=6):
     """
-    Create a scatter plot using plotnine for two features from the given DataFrame.
+    Create a scatter plot using plotnine or plotly for two features from the given DataFrame.
 
     Args:
         data (pd.DataFrame): The input data containing the features to be plotted.
         feature_x (str): The column name for the x-axis feature.
         feature_y (str): The column name for the y-axis feature.
-        title (str): Title of the plot (default is "Scatter Plot").
+        by (str, optional): The column name for grouping the data points by color (default is None).
+        kind (str, optional): The type of plot, if 'line', adds a line between the points (default is 'line').
+        title (str, optional): Title of the plot (default is "Scatter Plot").
+        engine (str, optional): The plotting engine to use ('ggplot' or 'plotly', default is 'ggplot').
+        width (int, optional): The width of the plot in inches (default is 10).
+        height (int, optional): The height of the plot in inches (default is 6).
 
     Returns:
-        plot (ggplot): The scatter plot generated using plotnine.
+        plot: The scatter plot generated using the specified engine (plotnine ggplot or plotly).
 
     Example:
-        plot_scatter(data=df, feature_x="age", feature_y="salary", title="Age vs Salary")
+        draw_scatter(data=df, feature_x="age", feature_y="salary", title="Age vs Salary", engine="plotly", width=12, height=8)
     """
     data_ = data.copy()
+
+    # Ensure 'by' is categorical if provided
     if by:
-        if data_[by].dtype not in ['object','category', 'string', 'bool']:
+        if data_[by].dtype not in ['object', 'category', 'string', 'bool']:
             if data_[by].nunique() <= 10:
                 data_[by] = data_[by].astype('object')
+
+    # Use plotnine (ggplot) engine
     if engine == 'ggplot':
         if by:
             p = (
                 ggplot.ggplot(data_, ggplot.aes(x=feature_x, y=feature_y, color=by)) +
                 ggplot.geom_point() +
-                ggplot.labs(title=title, x=feature_x, y=feature_y)
+                ggplot.labs(title=title, x=feature_x, y=feature_y) +
+                ggplot.theme(figure_size=(width, height))  # Set the figure size
             )
         else:
             p = (
                 ggplot.ggplot(data_, ggplot.aes(x=feature_x, y=feature_y)) +
                 ggplot.geom_point(color="blue") +
-                ggplot.labs(title=title, x=feature_x, y=feature_y)
+                ggplot.labs(title=title, x=feature_x, y=feature_y) +
+                ggplot.theme(figure_size=(width, height))  # Set the figure size
             )
+    
+    # Use plotly engine
     elif engine == 'plotly':
         if by:
-            p = px.scatter(data_, x=feature_x, y=feature_y, color=by, title=title)
+            p = px.scatter(data_, x=feature_x, y=feature_y, color=by, title=title, width=width*100, height=height*100)
         else:
-            p = px.scatter(data_, x=feature_x, y=feature_y, title=title)
+            p = px.scatter(data_, x=feature_x, y=feature_y, title=title, width=width*100, height=height*100)
+        
+        # If kind is 'line', include lines between points
         if kind == 'line':
             p = p.update_traces(mode='lines+markers')
+    
     return p
 
 
-def draw_barplot_cat(data, x, y=None, by=None, type=None, qn = None, title="Custom Bar Plot", label_percent=False, ncol = 3, reverse_axis = False):
+
+def draw_barplot_cat(data, x, y=None, by=None, type=None, qn=None, title="Custom Bar Plot", label_percent=False, ncol=3, reverse_axis=False, width=10, height=6):
     """
     Create a custom bar plot using plotnine (ggplot in Python).
     
@@ -978,11 +1019,15 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, qn = None, title="Cust
         type (str, optional): The type of bar plot ('dodge' for grouped bar plots). Defaults to None.
         title (str, optional): The title of the plot. Defaults to "Custom Bar Plot".
         label_percent (bool, optional): Whether to show percentage labels on the bars. Defaults to False.
+        ncol (int, optional): Number of columns for facets. Defaults to 3.
+        reverse_axis (bool, optional): If True, reverses x and y axes. Defaults to False.
+        width (int, optional): The width of the figure in inches. Defaults to 10.
+        height (int, optional): The height of the figure in inches. Defaults to 6.
         
     Returns:
-        ggplot: The plot object.
+        ggplot or plotly: The plot object.
     """
-
+    
     def prop_per_x(x, count):
         """
         Compute the proportion of the counts for each value of x
@@ -1001,17 +1046,18 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, qn = None, title="Cust
             data_[y] = data_[y].astype('object')
     if qn is not None and data_[x].dtype not in ['object', 'category', 'string', 'bool']:
         try:
-            data_[x] = pd.qcut(round(data_[x],3), q=qn).astype('object')
+            data_[x] = pd.qcut(round(data_[x], 3), q=qn).astype('object')
         except:
             print('qcut fail')
-            data_[x] = pd.cut(round(data_[x],3), bins=qn).astype('object')
+            data_[x] = pd.cut(round(data_[x], 3), bins=qn).astype('object')
 
     # Basic plot without dodging
     if type is None:
         plot = (
             ggplot.ggplot(data_, ggplot.aes(x=x)) +
             ggplot.geom_bar() +
-            ggplot.labs(title=title, x=x)
+            ggplot.labs(title=title, x=x) +
+            ggplot.theme(figure_size=(width, height))  # Set figure size
         )
     
     # Grouped bar plot (dodge)
@@ -1019,10 +1065,10 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, qn = None, title="Cust
         plot = (
             ggplot.ggplot(data_, ggplot.aes(x=x, fill=y)) +
             ggplot.geom_bar(position=ggplot.position_dodge()) +
-            ggplot.theme(figure_size=(10, 4),
+            ggplot.theme(figure_size=(width, height),  # Set figure size
                          dpi=80,
                          axis_text_x=ggplot.element_text(rotation=45, hjust=1)) +
-            ggplot.labs(title=x, y='Count')
+            ggplot.labs(title=title, y='Count')
         )
         if label_percent:
             plot = (plot +
@@ -1037,38 +1083,43 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, qn = None, title="Cust
                     size=9,
                 )
             )
+    
+    # Stacked bar plot (for plotly)
     elif type == 'stacked':
+        data_grouped = data_.groupby([x, y], as_index=False).size()
+        data_grouped[x] = data_grouped[x].astype('str')
+        data_grouped['proportion'] = data_grouped.groupby(x)['size'].transform(lambda x: round(x / x.sum() * 100, 2))
+        data_grouped[y] = data_grouped[y].astype('object')
 
-      data_grouped = data_.groupby([x, y], as_index = False).size()
-      data_grouped[x] = data_grouped[x].astype('str')
-      data_grouped['proportion'] = data_grouped.groupby(x)['size'].transform(lambda x: round(x / x.sum() * 100,2))
-      data_grouped[y] = data_grouped[y].astype('object')
+        plot = px.bar(
+            data_grouped,
+            x=x,
+            y='proportion',
+            color=y,
+            title=title,
+            labels={'proportion': 'Proportion (%)'},
+            text='proportion',
+            width=width * 100,  # Set width for plotly
+            height=height * 100  # Set height for plotly
+        )
 
-      plot = px.bar(
-                data_grouped,
-                x=x,
-                y='proportion',
-                color=y,
-                title=title,
-                labels={'proportion': 'Proportion (%)'},
-                text='proportion'  # Add percentages as text on the bars
-            ) 
-          
-      plot.update_layout(
-          barmode='stack',  # Stacked bar plot
-          yaxis=dict(range=[0, 100]),   
-          xaxis_title=x,
-          yaxis_title='Proportion (%)',
-      )
- 
-      plot.update_traces(texttemplate='%{text:.2f}%', textposition='inside')
+        plot.update_layout(
+            barmode='stack',
+            yaxis=dict(range=[0, 100]),
+            xaxis_title=x,
+            yaxis_title='Proportion (%)',
+        )
+
+        plot.update_traces(texttemplate='%{text:.2f}%', textposition='inside')
+
     # Add facet wrap if `by` is provided
     if by is not None:
         plot += ggplot.facet_wrap(facets=by, ncol=ncol)
 
     return plot
 
-def draw_count_plot(data, x, y, title=' ', engine='plotly'):
+
+def draw_count_plot(data, x, y, title=' ', engine='plotly', width=800, height=600):
     """
     Draws a count plot (bar plot) to visualize the relationship between a categorical variable (x) 
     and a numerical variable (y). The plot can be generated using either `ggplot` or `plotly`.
@@ -1115,7 +1166,8 @@ def draw_count_plot(data, x, y, title=' ', engine='plotly'):
             ggplot.ggplot(data.pipe(kit_cat_reorder, x, y), ggplot.aes(x=x, y=y)) +
             ggplot.geom_bar(stat='identity', fill='skyblue', color='black') +
             ggplot.labs(title=title, x='Variable', y='Percentage of NaN') +
-            ggplot.theme(axis_text_x=ggplot.element_text(rotation=45, hjust=1)) +
+            ggplot.theme(axis_text_x=ggplot.element_text(rotation=45, hjust=1),
+                         figure_size=(width / 100, height / 100)) +  # Scaling for ggplot figure size
             ggplot.coord_flip()
         )
     
@@ -1125,9 +1177,8 @@ def draw_count_plot(data, x, y, title=' ', engine='plotly'):
             x=x,
             y=y,
             title=title,
-            # Optionally add labels or text here if needed
-            # labels=title, 
-            # text=y 
+            width=width,  # Set the width of the plot
+            height=height  # Set the height of the plot
         )
          
         plot.update_xaxes(tickangle=45)
@@ -1199,58 +1250,116 @@ def draw_histogram(data, feature=None, title="Histogram", bins=10):
     )
     return plot
 
-def draw_histogram_all(data, ncol = 3): 
+def draw_histogram_all(data, ncol=3, width=12, height=8):
+    """
+    Draws histograms for all numerical features in the DataFrame.
+    
+    Args:
+        data (pd.DataFrame): The input DataFrame.
+        ncol (int, optional): Number of columns in the facet wrap. Default is 3.
+        width (int, optional): Width of the figure in inches. Default is 12.
+        height (int, optional): Height of the figure in inches. Default is 8.
+
+    Returns:
+        plotnine.ggplot: The generated ggplot histogram with facets.
+    """
+    
+    # Reshaping the data into long format for multiple histograms
     data_long = pd.melt(data[num_vars(data)])
  
+    # Creating the histogram with facets and specified figure size
     p = (
         ggplot.ggplot(data_long, ggplot.aes(x='value')) +
         ggplot.geom_histogram(bins=30) +
         ggplot.facet_wrap('variable', scales='free', ncol=ncol) +
-        ggplot.theme_bw()
+        ggplot.theme_bw() +
+        ggplot.theme(figure_size=(width, height))  # Setting the figure size
     )
 
     return p
 
-def draw_barplot_all(data, features = None, ncol = 3): 
+
+def draw_barplot_all(data, features=None, ncol=3, width=12, height=8):
+    """
+    Draws bar plots for all categorical features in the DataFrame.
+
+    Args:
+        data (pd.DataFrame): The input DataFrame.
+        features (list, optional): A list of categorical columns to plot. If None, selects all categorical columns.
+        ncol (int, optional): Number of columns in the facet wrap. Default is 3.
+        width (int, optional): Width of the figure in inches. Default is 12.
+        height (int, optional): Height of the figure in inches. Default is 8.
+
+    Returns:
+        plotnine.ggplot: The generated ggplot bar plot with facets.
+    """
     if features is None:
         features = cat_vars(data)
+        
+    # Reshaping the data into long format
     data_long = pd.melt(data[features]) 
  
+    # Creating the bar plot with facets and specified figure size
     p = (
-        ggplot.ggplot(data_long, ggplot.aes( x='value')) +
+        ggplot.ggplot(data_long, ggplot.aes(x='value')) +
         ggplot.geom_bar() +
         ggplot.facet_wrap('variable', scales='free', ncol=ncol) +
-        ggplot.theme_bw()
+        ggplot.theme_bw() +
+        ggplot.theme(figure_size=(width, height))  # Setting the figure size
     )
 
     return p
 
-def draw_density(data, feature, by = None, title="Density", alpha = 0.5, engine='ggplot'):
-    # sns.distplot(data['emp.var.rate'])
+
+def draw_density(data, feature, by=None, title="Density", alpha=0.5, engine='ggplot', width=10, height=6):
+    """
+    Draw a density plot using either ggplot or plotly.
+
+    Args:
+        data (pd.DataFrame): Input data containing the feature to be plotted.
+        feature (str): The column name of the feature to plot.
+        by (str, optional): The column name to color the density plot by. Defaults to None.
+        title (str, optional): Title of the plot. Defaults to "Density".
+        alpha (float, optional): Opacity for the density fill. Defaults to 0.5.
+        engine (str, optional): The plotting engine to use ('ggplot' or 'plotly'). Defaults to 'ggplot'.
+        width (int, optional): The width of the figure in inches (default is 10).
+        height (int, optional): The height of the figure in inches (default is 6).
+
+    Returns:
+        plot: The density plot generated using the specified engine (ggplot or plotly).
+    """
     data_ = data.copy()
+
+    # Use ggplot engine
     if engine == 'ggplot':
         if by is None:
-            p = ( ggplot.ggplot(data_, ggplot.aes(x=feature )) +
-                  ggplot.geom_density( alpha = alpha)  )
+            p = (ggplot.ggplot(data_, ggplot.aes(x=feature)) +
+                 ggplot.geom_density(alpha=alpha) +
+                 ggplot.theme(figure_size=(width, height)) +  # Set the figure size
+                 ggplot.labs(title=title))
         else:
-            if data_[by].dtype not in ['object','category', 'string', 'bool']:
+            if data_[by].dtype not in ['object', 'category', 'string', 'bool']:
                 data_[by] = data_[by].astype('object')
-            p = (
-                ggplot.ggplot(data_, ggplot.aes(x=feature, fill = by )) +
-                ggplot.geom_density( alpha = alpha)  ) 
+            p = (ggplot.ggplot(data_, ggplot.aes(x=feature, fill=by)) +
+                 ggplot.geom_density(alpha=alpha) +
+                 ggplot.theme(figure_size=(width, height)) +  # Set the figure size
+                 ggplot.labs(title=title))
         return p
+
+    # Use plotly engine
     elif engine == 'plotly':
-            p = px.histogram(
-                data_,
-                x=feature,
-                color=by, 
-                histnorm='density',  
-                title=title
-            ) 
-            p.update_traces(opacity=alpha) 
-            p.update_layout(showlegend=True, title=title)
-            
-            return p
+        p = px.histogram(
+            data_,
+            x=feature,
+            color=by,
+            histnorm='density',
+            title=title,
+            opacity=alpha,
+            width=width * 100,  # Convert inches to pixels for plotly
+            height=height * 100  # Convert inches to pixels for plotly
+        )
+        p.update_layout(showlegend=True, title=title)
+        return p
 
     else:
         raise ValueError("Invalid engine! Please choose either 'ggplot' or 'plotly'.")
