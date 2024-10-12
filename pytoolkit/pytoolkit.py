@@ -410,14 +410,14 @@ def feat_cor_dot(data_corr, xvar, width=6, height=3):
 
     # Create the plot
     p = (
-        ggplot(df_subset, aes(x='R', y='v2', group='v2')) +
-        geom_point(aes(color='Correlation'), size=2) +
-        geom_segment(aes(xend=0, yend='v2', color='Correlation'), size=1) +
-        geom_vline(xintercept=0, color='#1F77B4', size=1) +
-        expand_limits(x=(-1, 1)) +
-        scale_color_manual(values={"Positive": "#2C3E50", "Negative": "#E31A1C"}) +
-        theme_bw() +
-        ggtitle(f'Correlation with {xvar}')
+        ggplot.ggplot(df_subset, ggplot.aes(x='R', y='v2', group='v2')) +
+        ggplot.geom_point(ggplot.aes(color='Correlation'), size=2) +
+        ggplot.geom_segment(ggplot.aes(xend=0, yend='v2', color='Correlation'), size=1) +
+        ggplot.geom_vline(xintercept=0, color='#1F77B4', size=1) +
+        ggplot.expand_limits(x=(-1, 1)) +
+        ggplot.scale_color_manual(values={"Positive": "#2C3E50", "Negative": "#E31A1C"}) +
+        ggplot.theme_bw() +
+        ggplot.ggtitle(f'Correlation with {xvar}')
     )
 
     # Adjust plot size in inches
@@ -1308,7 +1308,12 @@ def draw_histogram_all(data, ncol=3, width=12, height=8):
         ggplot.geom_histogram(bins=30) +
         ggplot.facet_wrap('variable', scales='free', ncol=ncol) +
         ggplot.theme_bw() +
-        ggplot.theme(figure_size=(width, height))  # Setting the figure size
+        ggplot.theme(figure_size=(width, height),
+               plot_title=ggplot.element_text(size=5),  
+                axis_title_x=ggplot.element_text(size=6),  
+                axis_title_y=ggplot.element_text(size=6), 
+                axis_text_x=ggplot.element_text(size=5),  
+                axis_text_y=ggplot.element_text(size=5))  # Setting the figure size
     )
 
     return p
@@ -1340,7 +1345,12 @@ def draw_barplot_all(data, features=None, ncol=3, width=12, height=8):
         ggplot.geom_bar() +
         ggplot.facet_wrap('variable', scales='free', ncol=ncol) +
         ggplot.theme_bw() +
-        ggplot.theme(figure_size=(width, height))  # Setting the figure size
+        ggplot.theme(figure_size=(width, height),
+               plot_title=ggplot.element_text(size=5),  
+                axis_title_x=ggplot.element_text(size=6),  
+                axis_title_y=ggplot.element_text(size=6), 
+                axis_text_x=ggplot.element_text(size=5),  
+                axis_text_y=ggplot.element_text(size=5))  # Setting the figure size
     )
 
     return p
