@@ -417,7 +417,14 @@ def feat_cor_dot(data_corr, xvar, width=6, height=3):
         ggplot.expand_limits(x=(-1, 1)) +
         ggplot.scale_color_manual(values={"Positive": "#2C3E50", "Negative": "#E31A1C"}) +
         ggplot.theme_bw() +
-        ggplot.ggtitle(f'Correlation with {xvar}')
+        ggplot.ggtitle(f'Correlation with {xvar}') +
+        ggplot.theme( 
+            plot_title=ggplot.element_text(size=6),   
+            axis_title_x=ggplot.element_text(size=6),   
+            axis_title_y=ggplot.element_text(size=6),   
+            axis_text_x=ggplot.element_text(size=6),   
+            axis_text_y=ggplot.element_text(size=6),  
+        )
     )
 
     # Adjust plot size in inches
