@@ -386,28 +386,43 @@ def feat_cor_heatmap(data, target= None, figsize=(12, 11)):
     # sns.heatmap(data_corr, vmax=1., vmin=-1., annot=True, linewidths=.8, cmap="YlGnBu")
     plt.show()
 
-def feat_cor_dot(data_corr, xvar):
-    # Subset the data
-    df_subset = data_corr[data_corr['v1'] == xvar] 
+def feat_cor_dot(data_corr, xvar, width=6, height=3):
+    """
+    Create a dot plot that shows the correlation between a given variable and other variables.
 
-    # Add a new column "Correlation" based on the value of 'r'
+    Args:
+        data_corr (pd.DataFrame): The dataframe containing correlations. Expected columns are 'v1', 'v2', and 'R'.
+        xvar (str): The variable for which correlations will be plotted.
+        width (float, optional): Width of the plot in inches (default is 6 inches).
+        height (float, optional): Height of the plot in inches (default is 3 inches).
+    
+    Returns:
+        ggplot object: A dot plot showing correlations.
+    """
+    # Subset the data
+    df_subset = data_corr[data_corr['v1'] == xvar]
+
+    # Add a new column "Correlation" based on the value of 'R'
     df_subset['Correlation'] = np.where(df_subset['R'] >= 0, "Positive", "Negative")
 
-    # Reorder the 'y' column based on the absolute value of 'r'
+    # Reorder the 'v2' column based on the absolute value of 'R'
     df_subset = df_subset.sort_values('R', ascending=True)
 
     # Create the plot
     p = (
-        ggplot.ggplot(df_subset, ggplot.aes(x='R', y='v2', group='v2')) +
-        ggplot.geom_point(ggplot.aes(color='Correlation'), size=2) +
-        ggplot.geom_segment(ggplot.aes(xend=0, yend='v2', color='Correlation'), size=1) +
-        ggplot.geom_vline(xintercept=0, color='#1F77B4', size=1) +
-        ggplot.expand_limits(x=(-1, 1)) +
-        ggplot.scale_color_manual(values={"Positive": "#2C3E50", "Negative": "#E31A1C"}) +
-        ggplot.theme_bw() +
-        ggplot.ggtitle(f'Cor {xvar}') 
+        ggplot(df_subset, aes(x='R', y='v2', group='v2')) +
+        geom_point(aes(color='Correlation'), size=2) +
+        geom_segment(aes(xend=0, yend='v2', color='Correlation'), size=1) +
+        geom_vline(xintercept=0, color='#1F77B4', size=1) +
+        expand_limits(x=(-1, 1)) +
+        scale_color_manual(values={"Positive": "#2C3E50", "Negative": "#E31A1C"}) +
+        theme_bw() +
+        ggtitle(f'Correlation with {xvar}')
     )
 
+    # Adjust plot size in inches
+    p = p + ggplot.theme(figure_size=(width, height))
+    
     return p
 
 def plot_pca_features(data, col_pca, col_features, squish_lwr=0.01, squish_upr=0.99, engine='ggplot', ncol=3):
