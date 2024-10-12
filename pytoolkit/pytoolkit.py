@@ -12,7 +12,10 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.model_selection import learning_curve
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
+from sklearn.tree import DecisionTreeClassifier
 import scipy.stats as st
+
+from feature_engine.selection import SelectBySingleFeaturePerformance
 
 from statsmodels.tsa.stattools import adfuller, kpss
 from statsmodels.stats.stattools import jarque_bera 
@@ -1569,6 +1572,66 @@ def draw_ml_learning_curve(model, title, X, y, ylim=None, cv=None, n_jobs=1, tra
     )
     
     return p 
+
+
+## FEATENG
+def filterVarImp(X, y, est=DecisionTreeClassifier(random_state=123), metric='roc_auc', thresh=0.51, cv=5):
+    """
+    Filters and ranks features based on their importance using a specified estimator and evaluation metric.
+
+    This function applies `SelectBySingleFeaturePerformance` to assess feature importance by evaluating
+    the performance of individual features against the target variable. Features with performance above
+    the defined threshold are selected and their importance scores are ranked and returned.
+
+    Parameters:
+    ----------
+    X : pd.DataFrame
+        The input feature matrix. Each column represents a feature, and each row represents an observation.
+    
+    y : pd.Series or array-like
+        The target variable associated with the input features.
+
+    est : estimator object, default=DecisionTreeClassifier(random_state=123)
+        The estimator object used for evaluating feature performance. Should follow the scikit-learn API.
+        Example: DecisionTreeClassifier, RandomForestClassifier, etc.
+
+    metric : str, default='roc_auc'
+        The scoring metric used to evaluate feature performance. Should be one of the valid scoring metrics 
+        supported by scikit-learn, such as 'accuracy', 'roc_auc', 'f1', etc.
+
+    thresh : float, default=0.51
+        The threshold value used to filter features based on their performance. Only features with a performance
+        score higher than the threshold are selected.
+
+    cv : int, default=5
+        The number of cross-validation folds used to assess feature performance.
+
+    Returns:
+    -------
+    res : dict
+        A dictionary with two keys:
+        - 'imp': A dictionary of features and their corresponding performance scores, sorted in ascending order
+                 and rounded to three decimal places.
+        - 'select': A list of selected feature names (with 'missingindicator_' removed if present).
+
+    Example:
+    --------
+    >>> result = filterVarImp(X, y, est=DecisionTreeClassifier(), metric='accuracy', thresh=0.6)
+    >>> print(result['imp'])    # Print feature importance scores
+    >>> print(result['select']) # Print selected features
+
+    """
+    sel = SelectBySingleFeaturePerformance(estimator=est, scoring=metric, cv=cv, threshold=thresh)
+    sel.fit(X, y)  
+    d_imp = dict(sorted(sel.feature_performance_.items(), key=lambda item: item[1]))
+    d_imp = {key: round(value, 3) for key, value in d_imp.items()}
+    
+    res = { 
+        'imp': d_imp,
+        'select': [v.replace('missingindicator_', '') for v in sel.transform(X).columns.to_list()]
+    }
+    
+    return res
 
 ## Statistical tests 
 
