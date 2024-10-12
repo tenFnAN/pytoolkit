@@ -880,7 +880,12 @@ def draw_boxplot_cat(data, by, y, qn=None, title="Box Plot", width=6, height=3, 
             ggplot.ggplot(data_) + 
             ggplot.geom_boxplot(ggplot.aes(x=by, y=y)) +                      
             ggplot.labs(title=title) + 
-            ggplot.theme(figure_size=(width, height))  # Set figure size for ggplot
+            ggplot.theme(figure_size=(width, height),
+               plot_title=ggplot.element_text(size=5),  
+                axis_title_x=ggplot.element_text(size=6),  
+                axis_title_y=ggplot.element_text(size=6), 
+                axis_text_x=ggplot.element_text(size=5),  
+                axis_text_y=ggplot.element_text(size=5))  # Set figure size for ggplot
         )
     
     elif engine == 'plotly':
