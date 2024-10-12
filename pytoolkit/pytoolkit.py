@@ -859,10 +859,10 @@ def draw_boxplot_cat(data, by, y, qn=None, title="Box Plot", width=6, height=3, 
     if engine == 'ggplot':
         # Create the boxplot with plotnine (ggplot)
         boxplot = (
-            ggplot(data_) + 
-            geom_boxplot(aes(x=by, y=y)) +                      
-            labs(title=title) + 
-            theme(figure_size=(width, height))  # Set figure size for ggplot
+            ggplot.ggplot(data_) + 
+            ggplot.geom_boxplot(ggplot.aes(x=by, y=y)) +                      
+            ggplot.labs(title=title) + 
+            ggplot.theme(figure_size=(width, height))  # Set figure size for ggplot
         )
     
     elif engine == 'plotly':
