@@ -827,22 +827,26 @@ def draw_boxplot_num(data, y, title="Box Plot"):
     
     return boxplot
 
-def draw_boxplot_cat(data, by, y, qn = None, title="Box Plot", width=10, height=6):
+def draw_boxplot_cat(data, by, y, qn=None, title="Box Plot", width=6, height=3, engine='ggplot'):
     """
-    Draw a boxplot for categorical 'by' column and a continuous 'y' column,
+    Draw a boxplot for a categorical 'by' column and a continuous 'y' column,
     treating 'by' as categorical only within the function without altering the original data.
 
     Args:
         data (pd.DataFrame): Input DataFrame with various column types.
         by (str): The column to group by (categorical).
         y (str): The continuous variable for the box plot.
-        title (str): The title of the plot (default is 'Box Plot').
+        qn (int, optional): Number of quantiles or bins to cut the 'by' column into.
+        title (str, optional): The title of the plot (default is 'Box Plot').
+        width (int, optional): The width of the figure (default is 6).
+        height (int, optional): The height of the figure (default is 3).
+        engine (str, optional): The engine to use for plotting ('ggplot' or 'plotly'). Default is 'ggplot'.
 
     Returns:
-        plotnine.ggplot: Box plot visualizing the relationship between 'by' and 'y'.
+        plot: The generated box plot (plotnine ggplot or plotly express).
     """
     data_ = data.copy()
-    
+
     # Convert 'by' to categorical if it's not already, or apply quantile/bin splitting if necessary
     if data_[by].dtype not in ['object', 'category', 'string', 'bool']:
         if qn is not None:
@@ -852,13 +856,21 @@ def draw_boxplot_cat(data, by, y, qn = None, title="Box Plot", width=10, height=
                 data_[by] = pd.cut(data_[by], bins=qn)
         data_[by] = data_[by].astype('object')
 
-    # Creating the boxplot with specified figure size
-    boxplot = (
-        ggplot.ggplot(data_) + 
-        ggplot.geom_boxplot(ggplot.aes(x=by, y=y)) +                      
-        ggplot.labs(title=title) + 
-        ggplot.theme(figure_size=(width, height))  # Set figure size here
-    )
+    if engine == 'ggplot':
+        # Create the boxplot with plotnine (ggplot)
+        boxplot = (
+            ggplot(data_) + 
+            geom_boxplot(aes(x=by, y=y)) +                      
+            labs(title=title) + 
+            theme(figure_size=(width, height))  # Set figure size for ggplot
+        )
+    
+    elif engine == 'plotly':
+        # Create the boxplot with plotly express
+        boxplot = px.box(data_, x=by, y=y, title=title, width=width*100, height=height*100)
+    
+    else:
+        raise ValueError("Invalid engine! Please choose either 'ggplot' or 'plotly'.")
     
     return boxplot
 
