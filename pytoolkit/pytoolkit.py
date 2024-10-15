@@ -1,28 +1,31 @@
 import pandas as pd
 import numpy as np  
 import os, psutil
-
+import re
+import inspect # print(inspect.getsource(func))  # kod zrodlowy funkcji 
+#
 import matplotlib.pyplot as plt
 import seaborn as sns 
 from pandas.plotting import parallel_coordinates
 import plotly.express as px
 import plotnine as ggplot
-
+#
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.model_selection import learning_curve
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.base import TransformerMixin, BaseEstimator
 import scipy.stats as st
 
 from feature_engine.selection import SelectBySingleFeaturePerformance
-
+#
 from statsmodels.tsa.stattools import adfuller, kpss
 from statsmodels.stats.stattools import jarque_bera 
 from statsmodels.tsa.stattools import acf 
 
-import inspect
-# print(inspect.getsource(func))  # kod zrodlowy funkcji 
+ 
+ 
 
 def cols_change(d):  
     d.columns = list(map(''.join, d.columns.values)) 
@@ -1612,8 +1615,12 @@ def draw_ml_learning_curve(model, title, X, y, ylim=None, cv=None, n_jobs=1, tra
 
 
 ## FEATENG
+
+def estimator_avg_robust(x, round_ = 2): return round((np.median(x) + np.mean(x))/2,round_)
+
 def filterVarImp(X, y, est=DecisionTreeClassifier(random_state=123), metric='roc_auc', thresh=0.51, cv=5):
     """
+    est=DecisionTreeRegressor(random_state=123), metric='neg_root_mean_squared_error'
     Filters and ranks features based on their importance using a specified estimator and evaluation metric.
 
     This function applies `SelectBySingleFeaturePerformance` to assess feature importance by evaluating
@@ -1669,6 +1676,37 @@ def filterVarImp(X, y, est=DecisionTreeClassifier(random_state=123), metric='roc
     }
     
     return res
+
+def feat_ngram(data, n, select = '_', replace = 'var_', nmin=5):
+    txt_vec = data.columns[X.columns.str.contains(select)].tolist()  
+    txt_vec = [name.replace(replace, '') for name in txt_vec]   
+    txt_vec = [name.replace('_', ' ') for name in txt_vec]
+
+    n_grams = []
+    for phrase in txt_vec:
+            tokens = phrase.split()
+            # Generate n-grams manually
+            for i in range(len(tokens) - n + 1):
+                n_grams.append(' '.join(tokens[i:i + n]))
+    return freq_tbl(n_grams).query("frequency >= @nmin").rename(columns = {0:'var'}).assign(var=lambda x:x['var'].str.replace(' ', '_'))
+
+class FeatureRegexSelector(BaseEstimator, TransformerMixin):
+    def __init__(self, exclude = True,  cols_regex = None):
+        self.cols_regex = cols_regex
+        self.exclude = exclude
+    def fit(self, X, y = None):
+        return self
+    def transform(self, X):
+        if self.exclude:
+            col_names = X.columns
+            r = re.compile( ".*" + self.cols_regex )
+            col_filter = list(filter(r.match, col_names)) 
+            col_filtered = np.setdiff1d(col_names, col_filter) 
+            # print(len(col_filtered))
+            return X.loc[:,col_filtered]
+        else:
+            return X.filter(regex=self.cols_regex)
+
 
 ## Statistical tests 
 
@@ -1836,7 +1874,7 @@ def test_normality(data: pd.DataFrame, x : str):
     """
     # test_normality(data.assign(n = np.random.normal(loc=50, scale=10, size=len(data)) ), 'n')
     result = st.anderson(data[x])
-    print('Statistic: %.3f' % result.statistic)
+    print('Anderson-Darling Test Statistic: %.3f' % result.statistic)
 
     for i in range(len(result.critical_values)):
       sl, cv = result.significance_level[i], result.critical_values[i]
@@ -1850,35 +1888,36 @@ def test_normality(data: pd.DataFrame, x : str):
 
 # ts
 def test_dickeyF(data, alpha=0.05):
-  print("==== Augmented DickeyFuller (Null hypothesis - The process is non-stationary): ")
+    print("==== Augmented DickeyFuller (Null hypothesis - The process is non-stationary): ")
 
-  result = adfuller(data, autolag='AIC')
-  print(f'ADF Statistic: {result[0]}')
-  print(f'p-value: {result[1]}')
+    result = adfuller(data, autolag='AIC')
+    print(f'ADF Statistic: {result[0]}')
+    print(f'p-value: {result[1]}')
 
-  if result[1] < alpha:
-    print("The process is stationary.\n")
-  else:
-    print("The process is non-stationary.\n")
+    if result[1] < alpha:
+        print("The process is stationary.\n")
+    else:
+        print("The process is non-stationary.\n")
 
 def test_kpss(data, alpha=0.05):
-  print('==== Kwiatkowski PhillipsSchmidtShin (KPSS) test (Null hypothesis - The process is stationary):')
+    print('==== Kwiatkowski PhillipsSchmidtShin (KPSS) test (Null hypothesis - The process is stationary):')
 
-  kpsstest = kpss(data, regression='c')
-  print("KPSS Statistic = " + str(kpsstest[0]))
-  print( "p-value = " +str(kpsstest[1]))
+    kpsstest = kpss(data, regression='c')
+    print("KPSS Statistic = " + str(kpsstest[0]))
+    print( "p-value = " +str(kpsstest[1]))
 
-  if kpsstest[1] < alpha:
-    print("The process is non-stationary.\n")
-  else:
-    print("The process is stationary.\n")
+    if kpsstest[1] < alpha:
+        print("The process is non-stationary.\n")
+    else:
+        print("The process is stationary.\n")
 
-def test_Ljung_Box(data):
-  print('===H0: The residuals are independently distributed===')
-  print('ACF')
-  _, _, _, pval = acf(data, nlags=12, qstat=True, alpha=0.05)
-  
-  print('Null hypothesis is rejected for lags:', np.where(pval<=0.05))
+def test_Ljung_Box(data, nlags = 12):
+    # verify whether time series is a white noise
+    print('===H0: The residuals are independently distributed===')
+    print('ACF')
+    _, _, _, pval = acf(data, nlags=nlags, qstat=True, alpha=0.05)
+    
+    print('Null hypothesis is rejected for lags:', np.where(pval<=0.05))
 
 def test_jarq_bera(data, alpha = 0.05):
     print('==== The Jarque-Bera test of normality (Null hypothesis - The distribution is normal):')
@@ -1897,6 +1936,7 @@ def test_jarq_bera(data, alpha = 0.05):
 def reduce_mem_usage(df, verbose=True):
     """
     source https://www.kaggle.com/code/arjanso/reducing-dataframe-memory-size-by-65 
+           https://github.com/PacktPublishing/The-Kaggle-Book/blob/main/chapter_07/reduce_mem_usage.py
     """
     numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
     start_mem = df.memory_usage().sum() / 1024**2    
@@ -1993,3 +2033,19 @@ def sizeof_fmt(num, suffix='B'):
             return "%3.1f%s%s" % (num, unit, suffix)
         num /= 1024.0
     return "%.1f%s%s" % (num, 'Yi', suffix)
+
+# def seed_everything(seed,  tensorflow_init=True,  pytorch_init=True):
+#     """
+#     source https://github.com/PacktPublishing/The-Kaggle-Book/blob/main/chapter_07/seed_everything.py
+#     Seeds basic parameters for reproducibility of results
+#     """
+#     random.seed(seed)
+#     os.environ["PYTHONHASHSEED"] = str(seed)
+#     np.random.seed(seed)
+#     if tensorflow_init is True:
+#         tf.random.set_seed(seed)
+#     if pytorch_init is True:
+#         torch.manual_seed(seed)
+#         torch.cuda.manual_seed(seed)
+#         torch.backends.cudnn.deterministic = True
+#         torch.backends.cudnn.benchmark = False  
