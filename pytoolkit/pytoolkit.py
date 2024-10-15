@@ -1678,7 +1678,7 @@ def filterVarImp(X, y, est=DecisionTreeClassifier(random_state=123), metric='roc
     return res
 
 def feat_ngram(data, n, select = '_', replace = 'var_', nmin=5):
-    txt_vec = data.columns[X.columns.str.contains(select)].tolist()  
+    txt_vec = data.columns[data.columns.str.contains(select)].tolist()  
     txt_vec = [name.replace(replace, '') for name in txt_vec]   
     txt_vec = [name.replace('_', ' ') for name in txt_vec]
 
