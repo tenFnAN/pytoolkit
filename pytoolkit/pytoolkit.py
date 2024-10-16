@@ -1691,6 +1691,7 @@ def feat_ngram(data, n, select = '_', replace = 'var_', nmin=5):
     return freq_tbl(n_grams).query("frequency >= @nmin").rename(columns = {0:'var'}).assign(var=lambda x:x['var'].str.replace(' ', '_'))
 
 class FeatureRegexSelector(BaseEstimator, TransformerMixin):
+    #  ('fselect',       my.FeatureRegexSelector(exclude = True, cols_regex='NONE')),
     def __init__(self, exclude = True,  cols_regex = None):
         self.cols_regex = cols_regex
         self.exclude = exclude
@@ -1911,13 +1912,23 @@ def test_kpss(data, alpha=0.05):
     else:
         print("The process is stationary.\n")
 
-def test_Ljung_Box(data, nlags = 12):
-    # verify whether time series is a white noise
-    print('===H0: The residuals are independently distributed===')
-    print('ACF')
+def test_Ljung_Box(data, nlags=12):
+    # Verify whether time series/residuals are white noise 
+    print('=== H0: The residuals are independently distributed, no autocorrelation ===') 
+    print('H1 : there is serial correlation')
+    # Compute ACF and p-values
     _, _, _, pval = acf(data, nlags=nlags, qstat=True, alpha=0.05)
-    
-    print('Null hypothesis is rejected for lags:', np.where(pval<=0.05))
+
+    # Identify lags where the null hypothesis is rejected
+    rejected_lags = np.where(pval <= 0.05)[0]
+
+    # Output results
+    if len(rejected_lags) > 0:
+        print(f"Null hypothesis is rejected for the following lags (indicating autocorrelation): {rejected_lags}")
+        print("This suggests that the residuals are not independently distributed and may contain autocorrelation.")
+    else:
+        print("Null hypothesis is not rejected for all lags (indicating no autocorrelation).")
+        print("This suggests that the residuals are independently distributed and can be considered white noise.")
 
 def test_jarq_bera(data, alpha = 0.05):
     print('==== The Jarque-Bera test of normality (Null hypothesis - The distribution is normal):')
@@ -1934,7 +1945,7 @@ def test_jarq_bera(data, alpha = 0.05):
         print("The distribution is normal.")
 
 def reduce_mem_usage(df, verbose=True):
-    """
+    """ iterate through all the columns of a dataframe and modify the data type to reduce memory usage.     
     source https://www.kaggle.com/code/arjanso/reducing-dataframe-memory-size-by-65 
            https://github.com/PacktPublishing/The-Kaggle-Book/blob/main/chapter_07/reduce_mem_usage.py
     """
