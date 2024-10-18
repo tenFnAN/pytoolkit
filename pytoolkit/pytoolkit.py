@@ -25,7 +25,15 @@ from statsmodels.stats.stattools import jarque_bera
 from statsmodels.tsa.stattools import acf 
 
  
- 
+# class CFG:
+#     data_folder = 'data/'
+#     img_dim1 = 20
+#     img_dim2 = 10
+#     nepochs = 6
+#     seed = 42
+#     EPOCH = 300
+#     bsize = 16
+#     BATCH_SIZE = 1024
 
 def cols_change(d):  
     d.columns = list(map(''.join, d.columns.values)) 
@@ -1851,11 +1859,12 @@ def test_kruskal_significance(*groups, data=None, x=None, y=None, alpha=0.05 ):
         print('The distributions are significantly different (reject H0).')
 
     return stat, p
-
-def test_normality(data: pd.DataFrame, x : str):
+ 
+def test_normality(data: pd.DataFrame, x: str):
     """
     Perform a normality test on a specified column of a DataFrame using the Anderson-Darling test.
-
+    # Test Shapiro-Wilka   
+    # Test Kolmogorova-Smirnova (K-S) 
     Parameters:
     ----------
     data : pd.DataFrame
@@ -1865,27 +1874,39 @@ def test_normality(data: pd.DataFrame, x : str):
 
     Returns:
     -------
-    p : matplotlib.figure.Figure
-        A histogram plot of the specified column's data, illustrating its distribution.
-
-    Prints:
-    -------
-    Displays the test statistic and critical values for different significance levels, 
-    indicating whether the null hypothesis (data is normally distributed) is rejected or not.
+    Figure
+        A histogram and Q-Q plot of the specified column's data, illustrating its distribution.
     """
-    # test_normality(data.assign(n = np.random.normal(loc=50, scale=10, size=len(data)) ), 'n')
+    # Anderson-Darling test
     result = st.anderson(data[x])
     print('Anderson-Darling Test Statistic: %.3f' % result.statistic)
 
     for i in range(len(result.critical_values)):
-      sl, cv = result.significance_level[i], result.critical_values[i]
-      if result.statistic < result.critical_values[i]:
-        print('+++%.3f: %.3f, data looks normal (fail to reject H0)' % (sl, cv))
-      else:
-        print('---%.3f: %.3f, data does not look normal (reject H0)' % (sl, cv))
- 
-    p = draw_histogram(data, x)
-    return p
+        sl, cv = result.significance_level[i], result.critical_values[i]
+        if result.statistic < cv:
+            print('+++%.3f: %.3f, data looks normal (fail to reject H0)' % (sl, cv))
+        else:
+            print('---%.3f: %.3f, data does not look normal (reject H0)' % (sl, cv))
+    
+    # Plotting
+    plt.figure(figsize=(12, 6))
+
+    # Histogram
+    plt.subplot(1, 2, 1)
+    sns.histplot(data[x], kde=True)
+    plt.title('Histogram of {}'.format(x))
+    plt.xlabel(x)
+    plt.ylabel('Frequency')
+
+    # Q-Q plot
+    plt.subplot(1, 2, 2)
+    st.probplot(data[x], dist="norm", plot=plt)
+    plt.title('Q-Q Plot of {}'.format(x))
+    
+    plt.tight_layout()
+    plt.show()
+    
+    return plt
 
 # ts
 def test_dickeyF(data, alpha=0.05):
@@ -1944,6 +1965,9 @@ def test_jarq_bera(data, alpha = 0.05):
     else:
         print("The distribution is normal.")
 
+
+# import gc
+# gc.collect()
 def reduce_mem_usage(df, verbose=True):
     """ iterate through all the columns of a dataframe and modify the data type to reduce memory usage.     
     source https://www.kaggle.com/code/arjanso/reducing-dataframe-memory-size-by-65 
