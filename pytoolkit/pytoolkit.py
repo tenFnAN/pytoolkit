@@ -591,7 +591,7 @@ def _freq_tbl_logic(var, name):
 
     """
     cnt=var.value_counts()
-    df_res=pd.DataFrame({'frequency': var.value_counts(), 'percentage': round(var.value_counts()/len(var),3)})
+    df_res=pd.DataFrame({'frequency': cnt, 'percentage': round(cnt/len(var),3)})
     df_res.reset_index(drop=True)
     
     df_res[name] = df_res.index
@@ -1746,7 +1746,7 @@ def test_ttest_ind_significance(sample1, sample2, alpha=0.05):
     test_ttest_significance(data[data['yr']==0]['cnt'], data[data['yr']==1]['cnt'])
     Perform an independent t-test on two samples and interpret the p-value.
     This is a test for the null hypothesis that 2 independent samples have identical average.
-    Użyj ttest_ind, gdy masz niezależne próbki (np. dwie różne grupy).
+    Test t-Studenta dla dwóch niezależnych prób
     Probki moga miec rozny rozmiar.
 
     Parameters:
@@ -1774,7 +1774,7 @@ def test_ttest_rel_significance(sample1, sample2, alpha=0.05):
     """
     Perform a paired t-test on two samples and interpret the p-value.
     This is a test for the null hypothesis that two related samples have identical average.
-    Użyj ttest_rel, gdy masz powiązane próbki (np. przed i po pomiarach).
+    Test t-Studenta dla prób zależnych, powiązane próbki (np. przed i po eksperymencie/badaniach/leczeniu).
     Probki musza miec ten sam rozmiar.
     
     Parameters:
@@ -1863,8 +1863,9 @@ def test_kruskal_significance(*groups, data=None, x=None, y=None, alpha=0.05 ):
 def test_normality(data: pd.DataFrame, x: str):
     """
     Perform a normality test on a specified column of a DataFrame using the Anderson-Darling test.
-    # Test Shapiro-Wilka   
-    # Test Kolmogorova-Smirnova (K-S) 
+    # Test Andersona-Darlinga            Dobrze działa zarówno dla małych, jak i średnich próbek, szczególnie gdy wartości skrajne mają znaczenie
+    # Test Shapiro-Wilka                 Bardzo czuły test dla małych próbek (n < 50).
+    # Test Kolmogorova-Smirnova (K-S)    Stosowany do porównania rozkładów dla dowolnych rozkładów, nie tylko normalnych.
     Parameters:
     ----------
     data : pd.DataFrame
