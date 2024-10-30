@@ -1057,7 +1057,7 @@ def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = N
 
 
 
-def draw_barplot_cat(data, x, y=None, by=None, type=None, qn=None, title="Custom Bar Plot", label_percent=False, ncol=3, reverse_axis=False, width=10, height=6):
+def draw_barplot_cat(data, x, y=None, by=None, kind=None, qn=None, title="Custom Bar Plot", label_percent=False, ncol=3, reverse_axis=False, width=10, height=6):
     """
     Create a custom bar plot using plotnine (ggplot in Python).
     
@@ -1066,7 +1066,7 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, qn=None, title="Custom
         x (str): The column to use for the x-axis.
         y (str, optional): The column to fill by (for grouped bar plots). Defaults to None.
         by (str, optional): The column to facet by. Defaults to None.
-        type (str, optional): The type of bar plot ('dodge' for grouped bar plots). Defaults to None.
+        kind (str, optional): The type of bar plot ('dodge' for grouped bar plots). Defaults to None.
         title (str, optional): The title of the plot. Defaults to "Custom Bar Plot".
         label_percent (bool, optional): Whether to show percentage labels on the bars. Defaults to False.
         ncol (int, optional): Number of columns for facets. Defaults to 3.
@@ -1102,7 +1102,7 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, qn=None, title="Custom
             data_[x] = pd.cut(round(data_[x], 3), bins=qn).astype('object')
 
     # Basic plot without dodging
-    if type is None:
+    if kind is None:
         plot = (
             ggplot.ggplot(data_, ggplot.aes(x=x)) +
             ggplot.geom_bar() +
@@ -1111,7 +1111,7 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, qn=None, title="Custom
         )
     
     # Grouped bar plot (dodge)
-    elif type == 'dodge':
+    elif kind == 'dodge':
         plot = (
             ggplot.ggplot(data_, ggplot.aes(x=x, fill=y)) +
             ggplot.geom_bar(position=ggplot.position_dodge()) +
@@ -1135,7 +1135,7 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, qn=None, title="Custom
             )
     
     # Stacked bar plot (for plotly)
-    elif type == 'stacked':
+    elif kind == 'stacked':
         data_grouped = data_.groupby([x, y], as_index=False).size()
         data_grouped[x] = data_grouped[x].astype('str')
         data_grouped['proportion'] = data_grouped.groupby(x)['size'].transform(lambda x: round(x / x.sum() * 100, 2))
@@ -1245,6 +1245,58 @@ def draw_count_plot(data, x, y, kind = 'count', title=' ', engine='plotly', widt
     
     return plot
 
+ 
+def draw_heatmap_crosstab(data, x, y, value=None, aggfunc='size', normalize=False, title='Heatmap', width=800, height=600, zmax=None, zmin=None):
+    """
+    Draws a heatmap plot from a crosstab computed from the raw DataFrame.
+
+    Parameters:
+        data (pd.DataFrame): The input data.
+        x (str): Column name to use as index for the crosstab (rows).
+        y (str): Column name to use as columns for the crosstab.
+        value (str, optional): Column to aggregate; if None, counts occurrences.
+        aggfunc (str or function): Aggregation function to use in crosstab (e.g., 'size', 'sum', 'mean').
+        normalize (bool or str): Normalizes the crosstab. Options are False, True, or 'index'/'columns'.
+        title (str): Title of the plot.
+        width (int): Width of the plot.
+        height (int): Height of the plot.
+        zmax (float, optional): Maximum value for the color scale.
+        zmin (float, optional): Minimum value for the color scale.
+
+    Returns:
+        plotly.graph_objects.Figure: The heatmap plot.
+    """
+
+    # Validate input data
+    if not isinstance(data, pd.DataFrame):
+        raise ValueError("Input data must be a pandas DataFrame.")
+    if x not in data.columns or y not in data.columns:
+        raise ValueError(f"Columns '{x}' and '{y}' must exist in the DataFrame.")
+
+    # Calculate the crosstab with specified aggregation function
+    if value:
+        crosstab_data = pd.crosstab(index=data[x], columns=data[y], values=data[value], aggfunc=aggfunc, normalize=normalize)
+    else:
+        crosstab_data = pd.crosstab(index=data[x], columns=data[y], normalize=normalize)
+
+    # Handle zmin and zmax for color scaling
+    zmax = zmax if zmax is not None else crosstab_data.values.max()
+    zmin = zmin if zmin is not None else crosstab_data.values.min()
+
+    # Create the heatmap plot
+    plot = px.imshow(
+        crosstab_data.round(2),
+        labels=dict(x=y, y=x, color="Value" if not normalize else "Proportion"),
+        title=title,
+        width=width,
+        height=height,
+        zmin=zmin,
+        zmax=zmax,
+        text_auto=True
+    )
+
+    return plot
+    
 def draw_histogram(data, feature=None, title="Histogram", bins=10):
     """
     Create a histogram for the specified feature from the given data.
