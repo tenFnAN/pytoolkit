@@ -929,9 +929,6 @@ def draw_boxplot_all(data, ncol = 3):
 
     return p
 
-import matplotlib.pyplot as plt
-import seaborn as sns
-
 def draw_distr(feature, title='', bins='auto', width=11, height=9):
     """
     Draws a distribution plot (histogram and boxplot) for the given feature.
@@ -1172,7 +1169,7 @@ def draw_barplot_cat(data, x, y=None, by=None, type=None, qn=None, title="Custom
     return plot
 
 
-def draw_count_plot(data, x, y, title=' ', engine='plotly', width=800, height=600):
+def draw_count_plot(data, x, y, kind = 'count', title=' ', engine='plotly', width=800, height=600):
     """
     Draws a count plot (bar plot) to visualize the relationship between a categorical variable (x) 
     and a numerical variable (y). The plot can be generated using either `ggplot` or `plotly`.
@@ -1185,6 +1182,8 @@ def draw_count_plot(data, x, y, title=' ', engine='plotly', width=800, height=60
         The name of the categorical column to be shown on the x-axis.
     y : str
         The name of the numerical column to be shown on the y-axis.
+    kind : str
+        raw or count
     title : str, optional
         The title of the plot. Default is an empty string.
     engine : str, optional
@@ -1225,16 +1224,24 @@ def draw_count_plot(data, x, y, title=' ', engine='plotly', width=800, height=60
         )
     
     elif engine == 'plotly':
-        plot = px.bar(
-            data.sort_values(by=y, ascending=False),
-            x=x,
-            y=y,
-            title=title,
-            width=width,  # Set the width of the plot
-            height=height  # Set the height of the plot
-        )
-         
-        plot.update_xaxes(tickangle=45)
+        if kind == 'count':
+            plot = px.bar(
+                data.sort_values(by=y, ascending=False),
+                x=x,
+                y=y,
+                title=title,
+                width=width,   
+                height=height   
+            ) 
+            plot.update_xaxes(tickangle=45)
+        elif kind == 'raw':
+            plot = px.histogram(
+                data,
+                x=x,
+                color=y,
+                title=title, 
+                barmode='group'
+            )
     
     return plot
 
