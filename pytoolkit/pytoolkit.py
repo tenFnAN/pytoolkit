@@ -1057,7 +1057,7 @@ def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = N
 
 
 
-def draw_barplot_cat(data, x, y=None, by=None, kind=None, qn=None, title="Custom Bar Plot", label_percent=False, ncol=3, reverse_axis=False, width=10, height=6):
+def draw_barplot_cat(data, x, y=None, by=None, kind=None, qn=None, title="Custom Bar Plot", label_percent=False, ncol=3, reverse_axis=False, width=5, height=4):
     """
     Create a custom bar plot using plotnine (ggplot in Python).
     
@@ -1246,7 +1246,7 @@ def draw_count_plot(data, x, y, kind = 'count', title=' ', engine='plotly', widt
     return plot
 
  
-def draw_heatmap_crosstab(data, x, y, value=None, aggfunc='size', normalize=False, title='Heatmap', width=800, height=600, zmax=None, zmin=None):
+def draw_heatmap_crosstab(data, x, y, value=None, aggfunc='size', normalize=False, title='Heatmap', width=600, height=400, zmax=None, zmin=None):
     """
     Draws a heatmap plot from a crosstab computed from the raw DataFrame.
 
@@ -1262,7 +1262,13 @@ def draw_heatmap_crosstab(data, x, y, value=None, aggfunc='size', normalize=Fals
         height (int): Height of the plot.
         zmax (float, optional): Maximum value for the color scale.
         zmin (float, optional): Minimum value for the color scale.
-
+    Examples
+    --------
+    >>> #  
+    >>> my.draw_heatmap_crosstab(adult, x='income',  y='marital.status', aggfunc='size') 
+    >>> my.draw_heatmap_crosstab(adult, x='income',  y='marital.status', aggfunc='size', normalize='columns') 
+    >>> my.draw_heatmap_crosstab(adult, x='income',  y='marital.status', value='age', aggfunc='mean')
+ 
     Returns:
         plotly.graph_objects.Figure: The heatmap plot.
     """
@@ -1296,7 +1302,7 @@ def draw_heatmap_crosstab(data, x, y, value=None, aggfunc='size', normalize=Fals
     )
 
     return plot
-    
+
 def draw_histogram(data, feature=None, title="Histogram", bins=10):
     """
     Create a histogram for the specified feature from the given data.
