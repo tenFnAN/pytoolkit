@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns 
 from pandas.plotting import parallel_coordinates
 import plotly.express as px
+from plotly.subplots import make_subplots
 import plotnine as ggplot
 #
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
@@ -397,13 +398,13 @@ def feat_cor_heatmap(data, target= None, figsize=(12, 11)):
     # sns.heatmap(data_corr, vmax=1., vmin=-1., annot=True, linewidths=.8, cmap="YlGnBu")
     plt.show()
 
-def feat_cor_dot(data_corr, xvar, width=6, height=3):
+def feat_cor_dot(data_corr, target, width=6, height=3):
     """
     Create a dot plot that shows the correlation between a given variable and other variables.
 
     Args:
         data_corr (pd.DataFrame): The dataframe containing correlations. Expected columns are 'v1', 'v2', and 'R'.
-        xvar (str): The variable for which correlations will be plotted.
+        target (str): The variable for which correlations will be plotted.
         width (float, optional): Width of the plot in inches (default is 6 inches).
         height (float, optional): Height of the plot in inches (default is 3 inches).
     
@@ -411,7 +412,7 @@ def feat_cor_dot(data_corr, xvar, width=6, height=3):
         ggplot object: A dot plot showing correlations.
     """
     # Subset the data
-    df_subset = data_corr[data_corr['v1'] == xvar]
+    df_subset = data_corr[data_corr['v1'] == target]
 
     # Add a new column "Correlation" based on the value of 'R'
     df_subset['Correlation'] = np.where(df_subset['R'] >= 0, "Positive", "Negative")
@@ -428,7 +429,7 @@ def feat_cor_dot(data_corr, xvar, width=6, height=3):
         ggplot.expand_limits(x=(-1, 1)) +
         ggplot.scale_color_manual(values={"Positive": "#2C3E50", "Negative": "#E31A1C"}) +
         ggplot.theme_bw() +
-        ggplot.ggtitle(f'Correlation with {xvar}') +
+        ggplot.ggtitle(f'Correlation with {target}') +
         ggplot.theme( 
             plot_title=ggplot.element_text(size=6),   
             axis_title_x=ggplot.element_text(size=6),   
@@ -1134,33 +1135,67 @@ def draw_barplot_cat(data, x, y=None, by=None, kind=None, qn=None, title="Custom
                 )
             )
     
-    # Stacked bar plot (for plotly)
+    # Stacked bar plot (plotly only)
     elif kind == 'stacked':
-        data_grouped = data_.groupby([x, y], as_index=False).size()
+        data_grouped = data_.groupby([x, y] + ([by] if by else []), as_index=False).size()
         data_grouped[x] = data_grouped[x].astype('str')
-        data_grouped['proportion'] = data_grouped.groupby(x)['size'].transform(lambda x: round(x / x.sum() * 100, 2))
+        data_grouped['proportion'] = data_grouped.groupby([x] + ([by] if by else []))['size'].transform(lambda x: round(x / x.sum() * 100, 2))
         data_grouped[y] = data_grouped[y].astype('object')
+        
+        if by:
+            # Create subplots with facet wrap if 'by' is provided
+            unique_vals = data_[by].unique()
+            nrows = -(-len(unique_vals) // ncol)  # Calculate number of rows based on columns
+            plot = make_subplots(rows=nrows, cols=ncol, subplot_titles=[f"{by} = {val}" for val in unique_vals])
 
-        plot = px.bar(
-            data_grouped,
-            x=x,
-            y='proportion',
-            color=y,
-            title=title,
-            labels={'proportion': 'Proportion (%)'},
-            text='proportion',
-            width=width * 100,  # Set width for plotly
-            height=height * 100  # Set height for plotly
-        )
+            for i, val in enumerate(unique_vals):
+                facet_data = data_grouped[data_grouped[by] == val]
+                facet_plot = px.bar(
+                    facet_data,
+                    x=x,
+                    y='proportion',
+                    color=y,
+                    text='proportion',
+                    labels={'proportion': 'Proportion (%)'}
+                )
 
-        plot.update_layout(
-            barmode='stack',
-            yaxis=dict(range=[0, 100]),
-            xaxis_title=x,
-            yaxis_title='Proportion (%)',
-        )
+                for trace in facet_plot.data:
+                    plot.add_trace(trace, row=(i // ncol) + 1, col=(i % ncol) + 1)
 
-        plot.update_traces(texttemplate='%{text:.2f}%', textposition='inside')
+            plot.update_layout(
+                title=title,
+                width=width * 100,
+                height=height * 100,
+                barmode='stack',
+                yaxis=dict(range=[0, 100]),
+                xaxis_title=x,
+                yaxis_title='Proportion (%)',
+            )
+
+            plot.update_traces(texttemplate='%{text:.2f}%', textposition='inside')
+            plot.update_layout(showlegend=False)
+        else:
+            # Standard stacked bar plot without facets
+            plot = px.bar(
+                data_grouped,
+                x=x,
+                y='proportion',
+                color=y,
+                title=title,
+                labels={'proportion': 'Proportion (%)'},
+                text='proportion',
+                width=width * 100,
+                height=height * 100
+            )
+
+            plot.update_layout(
+                barmode='stack',
+                yaxis=dict(range=[0, 100]),
+                xaxis_title=x,
+                yaxis_title='Proportion (%)',
+            )
+
+            plot.update_traces(texttemplate='%{text:.2f}%', textposition='inside')
 
     # Add facet wrap if `by` is provided
     if by is not None:
