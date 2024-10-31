@@ -1198,8 +1198,8 @@ def draw_barplot_cat(data, x, y=None, by=None, kind=None, qn=None, title="Custom
             plot.update_traces(texttemplate='%{text:.2f}%', textposition='inside')
 
     # Add facet wrap if `by` is provided
-    if by is not None:
-        plot += ggplot.facet_wrap(facets=by, ncol=ncol)
+    if by is not None and kind != 'stacked':
+        plot += facet_wrap(facets=by, ncol=ncol)
 
     return plot
 
