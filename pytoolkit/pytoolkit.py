@@ -750,7 +750,7 @@ def mutate_at(data: pd.DataFrame, cols: list, func=np.log1p) -> pd.DataFrame:
 
 
 ## toolkit
-def kit_encoder_ordinal_fast(x): return pd.factorize(x)[0]
+def kit_encoder_ordinal_fast(x): return pd.factorize(x, sort=True)[0]
 def kit_cat_indices(data, columns):
     return sorted([data.columns.get_loc(col) for col in columns])
 
