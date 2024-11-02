@@ -25,7 +25,10 @@ from statsmodels.tsa.stattools import adfuller, kpss
 from statsmodels.stats.stattools import jarque_bera 
 from statsmodels.tsa.stattools import acf 
 
- 
+## TODO
+# dopasowanie rozkladu log1p sqrt
+# status + profnum
+# sns.lmplot 
 # class CFG:
 #     data_folder = 'data/'
 #     img_dim1 = 20
@@ -398,7 +401,7 @@ def feat_cor_heatmap(data, target= None, figsize=(12, 11)):
     # sns.heatmap(data_corr, vmax=1., vmin=-1., annot=True, linewidths=.8, cmap="YlGnBu")
     plt.show()
 
-def feat_cor_dot(data_corr, target, width=6, height=3):
+def feat_cor_dot(data_corr, target, width=6, height=5):
     """
     Create a dot plot that shows the correlation between a given variable and other variables.
 
@@ -421,27 +424,57 @@ def feat_cor_dot(data_corr, target, width=6, height=3):
     df_subset = df_subset.sort_values('R', ascending=True)
 
     # Create the plot
-    p = (
-        ggplot.ggplot(df_subset, ggplot.aes(x='R', y='v2', group='v2')) +
-        ggplot.geom_point(ggplot.aes(color='Correlation'), size=2) +
-        ggplot.geom_segment(ggplot.aes(xend=0, yend='v2', color='Correlation'), size=1) +
-        ggplot.geom_vline(xintercept=0, color='#1F77B4', size=1) +
-        ggplot.expand_limits(x=(-1, 1)) +
-        ggplot.scale_color_manual(values={"Positive": "#2C3E50", "Negative": "#E31A1C"}) +
-        ggplot.theme_bw() +
-        ggplot.ggtitle(f'Correlation with {target}') +
-        ggplot.theme( 
-            plot_title=ggplot.element_text(size=6),   
-            axis_title_x=ggplot.element_text(size=6),   
-            axis_title_y=ggplot.element_text(size=6),   
-            axis_text_x=ggplot.element_text(size=6),   
-            axis_text_y=ggplot.element_text(size=6),  
-        )
-    )
+    # p = (
+    #     ggplot.ggplot(df_subset, ggplot.aes(x='R', y='v2', group='v2')) +
+    #     ggplot.geom_point(ggplot.aes(color='Correlation'), size=2) +
+    #     ggplot.geom_segment(ggplot.aes(xend=0, yend='v2', color='Correlation'), size=1) +
+    #     ggplot.geom_vline(xintercept=0, color='#1F77B4', size=1) +
+    #     ggplot.expand_limits(x=(-1, 1)) +
+    #     ggplot.scale_color_manual(values={"Positive": "#2C3E50", "Negative": "#E31A1C"}) +
+    #     ggplot.theme_bw() +
+    #     ggplot.ggtitle(f'Correlation with {target}') +
+    #     ggplot.theme( 
+    #         plot_title=ggplot.element_text(size=6),   
+    #         axis_title_x=ggplot.element_text(size=6),   
+    #         axis_title_y=ggplot.element_text(size=6),   
+    #         axis_text_x=ggplot.element_text(size=6),   
+    #         axis_text_y=ggplot.element_text(size=6),  
+    #     )
+    # )
 
-    # Adjust plot size in inches
-    p = p + ggplot.theme(figure_size=(width, height))
-    
+    # # Adjust plot size in inches
+    # p = p + ggplot.theme(figure_size=(width, height))
+    color_mapping = {"Positive": "#2C3E50", "Negative": "#E31A1C"}
+
+    p = px.scatter(
+        df_subset.round(2),
+        x='R',
+        y='v2',
+        color='Correlation',
+        color_discrete_map=color_mapping,
+        title=f'Correlation with {target}',
+        labels={'R': 'R', 'v2': 'v2'} )
+    for _, row in df_subset.iterrows():
+        p.add_shape(
+            type="line",
+            x0=0,
+            y0=row['v2'],
+            x1=row['R'],
+            y1=row['v2'],
+            line=dict(color=color_mapping[row['Correlation']], width=1)
+        )
+        p.update_xaxes(range=[-1, 1])
+        p.update_layout(
+            xaxis_title="R",
+            yaxis_title="v2",
+            title=dict(font=dict(size=12)),
+            xaxis=dict(title=dict(font=dict(size=10)), tickfont=dict(size=8)),
+            yaxis=dict(title=dict(font=dict(size=10)), tickfont=dict(size=8)),
+            template="plotly_white",
+            width=width*100,   
+            height=height*100  
+        )
+ 
     return p
 
 def plot_pca_features(data, col_pca, col_features, squish_lwr=0.01, squish_upr=0.99, engine='ggplot', ncol=3):
@@ -997,14 +1030,14 @@ def draw_pairplot(data, cols, target, engine = 'ggplot'):
     return plot
 
 
-def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = None, kind='line', title: str = "Scatter Plot", engine='ggplot', width=10, height=6):
+def draw_scatter(data: pd.DataFrame, x: str, y: str, by: str = None, kind='line', title: str = "Scatter Plot", engine='ggplot', width=10, height=6):
     """
     Create a scatter plot using plotnine or plotly for two features from the given DataFrame.
 
     Args:
         data (pd.DataFrame): The input data containing the features to be plotted.
-        feature_x (str): The column name for the x-axis feature.
-        feature_y (str): The column name for the y-axis feature.
+        x (str): The column name for the x-axis feature.
+        y (str): The column name for the y-axis feature.
         by (str, optional): The column name for grouping the data points by color (default is None).
         kind (str, optional): The type of plot, if 'line', adds a line between the points (default is 'line').
         title (str, optional): Title of the plot (default is "Scatter Plot").
@@ -1016,7 +1049,7 @@ def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = N
         plot: The scatter plot generated using the specified engine (plotnine ggplot or plotly).
 
     Example:
-        draw_scatter(data=df, feature_x="age", feature_y="salary", title="Age vs Salary", engine="plotly", width=12, height=8)
+        draw_scatter(data=df, x="age", y="salary", title="Age vs Salary", engine="plotly", width=12, height=8)
     """
     data_ = data.copy()
 
@@ -1030,25 +1063,25 @@ def draw_scatter(data: pd.DataFrame, feature_x: str, feature_y: str, by: str = N
     if engine == 'ggplot':
         if by:
             p = (
-                ggplot.ggplot(data_, ggplot.aes(x=feature_x, y=feature_y, color=by)) +
+                ggplot.ggplot(data_, ggplot.aes(x=x, y=y, color=by)) +
                 ggplot.geom_point() +
-                ggplot.labs(title=title, x=feature_x, y=feature_y) +
+                ggplot.labs(title=title, x=x, y=y) +
                 ggplot.theme(figure_size=(width, height))  # Set the figure size
             )
         else:
             p = (
-                ggplot.ggplot(data_, ggplot.aes(x=feature_x, y=feature_y)) +
+                ggplot.ggplot(data_, ggplot.aes(x=x, y=y)) +
                 ggplot.geom_point(color="blue") +
-                ggplot.labs(title=title, x=feature_x, y=feature_y) +
+                ggplot.labs(title=title, x=x, y=y) +
                 ggplot.theme(figure_size=(width, height))  # Set the figure size
             )
     
     # Use plotly engine
     elif engine == 'plotly':
         if by:
-            p = px.scatter(data_, x=feature_x, y=feature_y, color=by, title=title, width=width*100, height=height*100)
+            p = px.scatter(data_, x=x, y=y, color=by, title=title, width=width*100, height=height*100)
         else:
-            p = px.scatter(data_, x=feature_x, y=feature_y, title=title, width=width*100, height=height*100)
+            p = px.scatter(data_, x=x, y=y, title=title, width=width*100, height=height*100)
         
         # If kind is 'line', include lines between points
         if kind == 'line':
