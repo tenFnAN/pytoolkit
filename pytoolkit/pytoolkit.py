@@ -25,6 +25,18 @@ from feature_engine.selection import SelectBySingleFeaturePerformance
 from statsmodels.tsa.stattools import adfuller, kpss
 from statsmodels.stats.stattools import jarque_bera 
 from statsmodels.tsa.stattools import acf 
+# qa
+from sklearn.metrics import (  
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    cohen_kappa_score,
+    average_precision_score,
+    roc_auc_score,
+    confusion_matrix,
+    classification_report
+)
 
 ## TODO
 # dopasowanie rozkladu log1p sqrt
@@ -574,7 +586,7 @@ def feat_cor_pca(data_corr, n_cluster = 3, n_dim = 2, target = None):
     - A scatter plot is generated using Plotly, highlighting the clusters and target variable.
     """
     if all(np.diag(data_corr) == 1) is not True :
-        if all(data_corr.columns.isin(['v1', 'v2', 'R', 'R2'])) is not True:
+        if all(data_corr.columns.isin(['v1', 'v2', 'R', 'R2'])) is True:
             data_corr = data_corr.pivot(index = 'v1',columns= 'v2', values = 'R').fillna(1)
         else:
             data_corr = feat_cor(data_corr).loc[:, ['v1', 'v2', 'R']].pivot(index = 'v1',columns= 'v2', values = 'R').fillna(1)
@@ -1728,10 +1740,10 @@ def draw_ml_residuals(X_val: pd.DataFrame, y_val: pd.core.series.Series, ml):
     ) 
     return plot1, plot2
 
-def draw_ml_learning_curve(model, title, X, y, ylim=None, cv=None, n_jobs=1, train_sizes=np.linspace(.1, 1.0, 5)):
+def draw_ml_learning_curve(model, title, X, y, ylim=None, cv=None, scoring = 'roc_auc', n_jobs=1, train_sizes=np.linspace(.1, 1.0, 5)):
     # draw_ml_learning_curve(ml_rf, "Learning Curves (Logistic Regression)", X, y, ylim=(0.7, 1.02), cv=cv, n_jobs=4)
     # Calculate learning curve data
-    train_sizes, train_scores, test_scores = learning_curve(model, X, y, cv=cv, n_jobs=n_jobs, train_sizes=train_sizes)
+    train_sizes, train_scores, test_scores = learning_curve(model, X, y,scoring=scoring, cv=cv, n_jobs=n_jobs, train_sizes=train_sizes)
     
     # Compute means and standard deviations
     train_scores_mean = np.mean(train_scores, axis=1)
@@ -2078,6 +2090,48 @@ def test_normality(data: pd.DataFrame, x: str):
     plt.show()
     
     return plt
+
+# Quality
+def qa_clf(model, name, y_test, X_test):     
+    y_pred      = model.predict(X_test) 
+    y_pred_prob = model.predict_proba(X_test)[:, 1]
+
+    accuracy  = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred, average='weighted')
+    recall    = recall_score(y_test, y_pred, average='weighted')
+    specificity = recall_score(y_test, y_pred, pos_label=0)
+    pr_auc = average_precision_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred, average='weighted')
+    # KS statistic 
+    positive_scores = y_pred_prob[y_test == 1]
+    negative_scores = y_pred_prob[y_test == 0] 
+    ks_statistic, _ = st.ks_2samp(positive_scores, negative_scores)
+    #
+    kppa = cohen_kappa_score(y_test, y_pred)
+    auc = roc_auc_score(y_test, y_pred_prob)
+    # conf_matrix = confusion_matrix(y_test, y_pred)
+    conf_matrix = pd.DataFrame(confusion_matrix(y_test, y_pred), #prawd_rl>punkt_odciecia
+             columns = ['predicted negatives', 'predicted positives'], 
+             index = ['actual negatives', 'actual positives'])
+
+    report = classification_report(y_test, y_pred, target_names=['Class 0', 'Class 1'])  # Adjust target_names as needed
+    print(conf_matrix)
+    print(report)
+
+    return pd.DataFrame({
+        'name' : name,
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'specificity': specificity,
+        'kappa':kppa,
+        'f1': f1,
+        'ks': ks_statistic,
+        'pr_auc' : pr_auc ,
+        'auc' : auc
+        # 'gini' : 2 * auc - 1
+      
+    }, index=[name]).round(3)
 
 # ts
 def test_dickeyF(data, alpha=0.05):
