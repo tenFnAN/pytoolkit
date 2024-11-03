@@ -573,8 +573,11 @@ def feat_cor_pca(data_corr, n_cluster = 3, n_dim = 2, target = None):
     - KMeans clustering is applied to group the data based on PCA results.
     - A scatter plot is generated using Plotly, highlighting the clusters and target variable.
     """
-    if all(np.diag(data_corr) == 1) is not True:
-        data_corr = feat_cor(data_corr).loc[:, ['v1', 'v2', 'R']].pivot(index = 'v1',columns= 'v2', values = 'R').fillna(1)
+    if all(np.diag(data_corr) == 1) is not True :
+        if all(data_corr.columns.isin(['v1', 'v2', 'R', 'R2'])) is not True:
+            data_corr = data_corr.pivot(index = 'v1',columns= 'v2', values = 'R').fillna(1)
+        else:
+            data_corr = feat_cor(data_corr).loc[:, ['v1', 'v2', 'R']].pivot(index = 'v1',columns= 'v2', values = 'R').fillna(1)
     # dimension reduction
     pca = PCA(n_components=3)
     data_pca = pd.DataFrame(pca.fit_transform(data_corr), columns=['PC1','PC2','PC3']).assign(var = data_corr.index)
@@ -604,10 +607,9 @@ def feat_cor_pca(data_corr, n_cluster = 3, n_dim = 2, target = None):
 
     # Add labels using Plotly's update_traces
     fig.update_traces(textposition='top center', textfont=dict(size=12))
-
-    # Show the plot
-    # fig.show()  
+ 
     return fig
+
 def _freq_tbl_logic(var, name):
     """
     For internal use. Related to `freq_tbl`.
@@ -786,6 +788,7 @@ def mutate_at(data: pd.DataFrame, cols: list, func=np.log1p) -> pd.DataFrame:
 ## toolkit
 def kit_encoder_ordinal_fast(x): return pd.factorize(x, sort=True)[0]
 def kit_list_unpack(x): return list(chain(*x))
+    # my.freq_tbl(my.kit_list_unpack([v.split() for v in features_to_inspect_interact] ) )
 def kit_cat_indices(data, columns):
     return sorted([data.columns.get_loc(col) for col in columns])
 
