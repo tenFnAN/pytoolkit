@@ -1771,6 +1771,29 @@ def draw_ml_learning_curve(model, title, X, y, ylim=None, cv=None, scoring = 'ro
     
     return p 
 
+def draw_hparam_gridsearch(data, cols_target = 'mean_test_score', cols_param = None, ncol = 3):
+
+    if cols_param is None:
+        cols_param = data.filter(regex='param').drop(columns=['params'], errors='ignore').columns
+    
+    # Filter out columns with only one unique value
+    # cols_param = [c for c in cols_param if data[c].nunique() > 1]
+
+    # Bin continuous variables with >=8 unique values into quartiles
+    for c in cols_param:
+        if data[c].nunique() >= 8 and pd.api.types.is_numeric_dtype(data[c]):
+            data[c] = pd.qcut(data[c], q=4)
+
+    # Melt  
+    df_melted = data.melt(id_vars=[cols_target], 
+                          value_vars=cols_param,
+                          var_name='parameter', 
+                          value_name='value')
+    p = (ggplot.ggplot(df_melted, ggplot.aes(x='value', y=cols_target)) +
+        ggplot.geom_boxplot() +
+        ggplot.facet_wrap('parameter', scales='free', ncol=ncol) +
+        ggplot.theme_bw())
+    return p
 
 ## FEATENG
 
