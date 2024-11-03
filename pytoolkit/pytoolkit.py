@@ -11,7 +11,7 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 import plotnine as ggplot
 #
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, PolynomialFeatures 
 from sklearn.model_selection import learning_curve
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
@@ -1762,6 +1762,10 @@ def estimator_avg_robust(x, round_ = 2): return round((np.median(x) + np.mean(x)
 def filterVarImp(X, y, est=DecisionTreeClassifier(random_state=123), metric='roc_auc', thresh=0.51, cv=5):
     """
     est=DecisionTreeRegressor(random_state=123), metric='neg_root_mean_squared_error'
+    est=LogisticRegression(), metric='roc_auc'
+
+    # roc_auc < 0.53
+        # 
     Filters and ranks features based on their importance using a specified estimator and evaluation metric.
 
     This function applies `SelectBySingleFeaturePerformance` to assess feature importance by evaluating
@@ -1816,6 +1820,35 @@ def filterVarImp(X, y, est=DecisionTreeClassifier(random_state=123), metric='roc
     }
     
     return res
+
+def feat_interactions(X, degree=2, interaction_only=True, include_bias=False):
+    """
+    Generates interaction features for a given DataFrame.
+    
+    Parameters:
+    - X (pd.DataFrame): Input DataFrame with original features.
+    - degree (int): Degree of interactions to generate. Default is 2.
+    - interaction_only (bool): If True, only interaction terms are produced. Default is True.
+    - include_bias (bool): If True, includes the bias column (all ones). Default is False.
+    
+    Returns:
+    - pd.DataFrame: DataFrame with original and interaction features.
+    """
+    
+    # Create PolynomialFeatures with specified parameters
+    poly = PolynomialFeatures(degree=degree, interaction_only=interaction_only, include_bias=include_bias)
+    
+    # Generate interaction features
+    X_interactions = poly.fit_transform(X)
+    
+    # Create feature names for interaction terms
+    interaction_feature_names = poly.get_feature_names_out(input_features=X.columns)
+    
+    # Return a DataFrame with interaction features
+    X_interactions_df = pd.DataFrame(X_interactions, columns=interaction_feature_names, index=X.index)
+    X_interactions_df = X_interactions_df.T.drop_duplicates().T
+
+    return X_interactions_df
 
 def feat_ngram(data, n, select = '_', replace = 'var_', nmin=5):
     txt_vec = data.columns[data.columns.str.contains(select)].tolist()  
