@@ -3,6 +3,7 @@ import numpy as np
 import os, psutil
 import re
 import inspect # print(inspect.getsource(func))  # kod zrodlowy funkcji 
+from itertools import chain
 #
 import matplotlib.pyplot as plt
 import seaborn as sns 
@@ -784,6 +785,7 @@ def mutate_at(data: pd.DataFrame, cols: list, func=np.log1p) -> pd.DataFrame:
 
 ## toolkit
 def kit_encoder_ordinal_fast(x): return pd.factorize(x, sort=True)[0]
+def kit_list_unpack(x): return list(chain(*x))
 def kit_cat_indices(data, columns):
     return sorted([data.columns.get_loc(col) for col in columns])
 
