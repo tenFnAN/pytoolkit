@@ -1808,8 +1808,7 @@ def filterVarImp(X, y, est=DecisionTreeClassifier(random_state=123), metric='roc
     """
     sel = SelectBySingleFeaturePerformance(estimator=est, scoring=metric, cv=cv, threshold=thresh)
     sel.fit(X, y)  
-    d_imp = dict(sorted(sel.feature_performance_.items(), key=lambda item: item[1]))
-    d_imp = {key: round(value, 3) for key, value in d_imp.items()}
+    d_imp = round(pd.Series(dict(sorted(sel.feature_performance_.items(), key=lambda item: item[1]))),3) 
     
     res = { 
         'imp': d_imp,
