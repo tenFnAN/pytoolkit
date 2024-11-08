@@ -42,6 +42,8 @@ from sklearn.metrics import (
 # dopasowanie rozkladu log1p sqrt
 # status + profnum
 # sns.lmplot 
+# tree_explain(df_users, target='avg_population_per_location_enc', model=xgb.XGBRegressor())
+
 # class CFG:
 #     data_folder = 'data/'
 #     img_dim1 = 20
@@ -1194,7 +1196,10 @@ def draw_barplot_cat(data, x, y=None, by=None, kind=None, qn=None, title="Custom
         
         if by:
             # Create subplots with facet wrap if 'by' is provided
-            unique_vals = data_[by].unique()
+            if data_[by].dtype in [ 'category' ]: 
+                unique_vals = sorted(data_[by].unique())
+            else:
+                unique_vals = data_[by].unique()
             nrows = -(-len(unique_vals) // ncol)  # Calculate number of rows based on columns
             plot = make_subplots(rows=nrows, cols=ncol, subplot_titles=[f"{by} = {val}" for val in unique_vals])
 
@@ -1388,7 +1393,7 @@ def draw_heatmap_crosstab(data, x, y, value=None, aggfunc='size', normalize=Fals
 
     return plot
 
-def draw_histogram(data, feature=None, title="Histogram", bins=10):
+def draw_histogram(data, x=None, title="Histogram", bins=10):
     """
     Create a histogram for the specified feature from the given data.
 
@@ -1400,7 +1405,7 @@ def draw_histogram(data, feature=None, title="Histogram", bins=10):
         data (Union[pd.Series, pd.DataFrame, np.ndarray]): 
             The input data. Can be a pandas Series, a pandas DataFrame, 
             or a numpy ndarray.
-        feature (str, optional): 
+        x (str, optional): 
             The name of the feature to plot if data is a DataFrame. 
             If data is a numpy ndarray, this will be used as the column name.
             Default is None.
@@ -1440,9 +1445,9 @@ def draw_histogram(data, feature=None, title="Histogram", bins=10):
         feature_name = data.name
         plot_data = data.to_frame()
     # If data is a DataFrame, use the feature column
-    elif isinstance(data, pd.DataFrame) and feature:
-        feature_name = feature
-        plot_data = data[[feature]]
+    elif isinstance(data, pd.DataFrame) and x:
+        feature_name = x
+        plot_data = data[[x]]
     else:
         raise ValueError("Invalid input: data must be a pandas Series, DataFrame with a feature specified, or a numpy ndarray.")
 
@@ -1487,7 +1492,7 @@ def draw_histogram_all(data, ncol=3, width=12, height=8):
     return p
 
 
-def draw_barplot_all(data, features=None, ncol=3, width=12, height=8):
+def draw_barplot_all(data, x=None, ncol=3, width=12, height=8):
     """
     Draws bar plots for all categorical features in the DataFrame.
 
@@ -1501,11 +1506,11 @@ def draw_barplot_all(data, features=None, ncol=3, width=12, height=8):
     Returns:
         plotnine.ggplot: The generated ggplot bar plot with facets.
     """
-    if features is None:
-        features = cat_vars(data)
+    if x is None:
+        x = cat_vars(data)
         
     # Reshaping the data into long format
-    data_long = pd.melt(data[features]) 
+    data_long = pd.melt(data[x]) 
  
     # Creating the bar plot with facets and specified figure size
     p = (
@@ -1524,13 +1529,13 @@ def draw_barplot_all(data, features=None, ncol=3, width=12, height=8):
     return p
 
 
-def draw_density(data, feature, by=None, title="Density", alpha=0.5, engine='ggplot', width=10, height=6):
+def draw_density(data, x, by=None, title="Density", alpha=0.5, engine='ggplot', width=10, height=6):
     """
     Draw a density plot using either ggplot or plotly.
 
     Args:
         data (pd.DataFrame): Input data containing the feature to be plotted.
-        feature (str): The column name of the feature to plot.
+        x (str): The column name of the feature to plot.
         by (str, optional): The column name to color the density plot by. Defaults to None.
         title (str, optional): Title of the plot. Defaults to "Density".
         alpha (float, optional): Opacity for the density fill. Defaults to 0.5.
@@ -1546,14 +1551,14 @@ def draw_density(data, feature, by=None, title="Density", alpha=0.5, engine='ggp
     # Use ggplot engine
     if engine == 'ggplot':
         if by is None:
-            p = (ggplot.ggplot(data_, ggplot.aes(x=feature)) +
+            p = (ggplot.ggplot(data_, ggplot.aes(x=x)) +
                  ggplot.geom_density(alpha=alpha) +
                  ggplot.theme(figure_size=(width, height)) +  # Set the figure size
                  ggplot.labs(title=title))
         else:
             if data_[by].dtype not in ['object', 'category', 'string', 'bool']:
                 data_[by] = data_[by].astype('object')
-            p = (ggplot.ggplot(data_, ggplot.aes(x=feature, fill=by)) +
+            p = (ggplot.ggplot(data_, ggplot.aes(x=x, fill=by)) +
                  ggplot.geom_density(alpha=alpha) +
                  ggplot.theme(figure_size=(width, height)) +  # Set the figure size
                  ggplot.labs(title=title))
@@ -1563,7 +1568,7 @@ def draw_density(data, feature, by=None, title="Density", alpha=0.5, engine='ggp
     elif engine == 'plotly':
         p = px.histogram(
             data_,
-            x=feature,
+            x=x,
             color=by,
             histnorm='density',
             title=title,
