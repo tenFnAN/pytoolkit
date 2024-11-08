@@ -904,6 +904,18 @@ def kit_cat_reorder(df, cat_column, feature_column, fun=np.median, ascending=Tru
 
     return df_copy
 
+def kit_fillna_regex(data, regex, value = 0, **kwargs):
+    # fillna_regex(leads_tags_df, regex = "^tag_")
+    for col in data.columns:
+        if re.match(pattern = regex, string = col): 
+            data[col] = data[col].fillna(value = value, **kwargs)
+    return data    
+
+def kit_cat_rarelabel(data, cat_column, categories_to_keep, replace_with = 'Other'):
+    # kit_cat_rarelabel(leads_tags_df, 'country_code', countries_to_keep)
+    data[cat_column] = data[cat_column].apply(lambda x: x if x in categories_to_keep else replace_with)
+    return data[cat_column]
+
 ## plot
 def draw_boxplot_num(data, y, title="Box Plot"):
 
