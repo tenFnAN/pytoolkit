@@ -920,8 +920,8 @@ def kit_cat_rarelabel(data, cat_column, categories_to_keep, replace_with = 'Othe
 def draw_boxplot_num(data, y, title="Box Plot"):
 
     boxplot = (
-        ggplot.ggplot(data, ggplot.aes(y=y)) +  # Specify x and y variables
-        ggplot.geom_boxplot() +                      # Add the box plot geometry
+        ggplot.ggplot(data, ggplot.aes(y=y)) + 
+        ggplot.geom_boxplot() +                  
         ggplot.labs(title=title) +
         ggplot.coord_flip()                  
     )
@@ -993,6 +993,105 @@ def draw_boxplot_all(data, ncol = 3):
     )
 
     return p
+    
+def draw_cross_plot(data, x, target, qn_x=10, qn_target = 5, discretize=False):
+    """
+    Create a combined plot with a stacked bar plot and a grouped bar count plot.
+    If x or y is not categorical and `discretize=True`, they will be binned into quantile-based buckets.
+
+    Args:
+        data (pd.DataFrame): Input DataFrame.
+        x (str): The column name for the x-axis.
+        target (str): The column name for the categorical grouping (color argument).
+        qn (int, optional): Number of quantile-based buckets for discretization. Defaults to 10.
+        discretize (bool, optional): Whether to discretize non-categorical x or y. Defaults to False.
+
+    Returns:
+        plotly.graph_objs._figure.Figure: Combined figure with the two plots in one row.
+    """
+    data_ = data.copy()
+
+    def discretize_column(data, column, qn=None):
+        """
+        Discretize a column using pd.qcut or pd.cut, and format intervals to strings.
+
+        Args:
+            data (pd.DataFrame): Input DataFrame.
+            column (str): Name of the column to discretize.
+            qn (int): Number of bins or quantiles.
+
+        Returns:
+            pd.Series: Discretized column with formatted interval labels as strings.
+        """
+        if data[column].dtype not in ['object', 'category', 'string', 'bool']:
+            try:
+                # Use pd.qcut
+                binned = pd.qcut(data[column], q=qn, precision=2)
+            except ValueError:
+                # Fallback to pd.cut
+                binned = pd.cut(data[column], bins=qn, precision=2)
+
+            # Format intervals as strings
+            return binned.apply(lambda x: f"({x.left:.2f}, {x.right:.2f}]" if not pd.isna(x) else "NaN").astype('str')
+        return data[column]
+    
+    if data_[x].dtype not in ['object', 'category', 'string', 'bool']:
+        data_[x] = discretize_column(data_, x, qn=qn_x)
+    if data_[target].dtype not in ['object', 'category', 'string', 'bool']:
+        data_[target] = discretize_column(data_, target, qn=qn_target)
+ 
+    # Grouping the data
+    grouped_avg_score = (
+        data_.groupby([x, target], as_index=False)
+        .size()
+        .rename(columns={'size': 'n'})
+        .assign( p=lambda g: (g['n'] / g.groupby(x)['n'].transform('sum')).round(2) )
+    ) 
+    # Stacked bar plot
+    fig1 = px.bar(
+        grouped_avg_score, 
+        x=x, 
+        y='p', 
+        color=target, 
+        text='p', 
+        title="Stacked Bar Plot"
+    )
+    fig1.update_traces(textposition='inside', texttemplate='%{text:.3f}')
+
+    # Grouped bar count plot
+    fig2 = px.bar(
+        grouped_avg_score,
+        x=x,
+        y='n',
+        color=target,
+        barmode='group',
+        title='Grouped Bar Count Plot',
+        labels={'Count': 'Count'}
+    )
+
+    # Combine plots in subplots
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=(" ", " "),
+        shared_xaxes=True
+    )
+    
+    # Add traces from both figures
+    for trace in fig1.data:
+        fig.add_trace(trace, row=1, col=1)
+    for trace in fig2.data:
+        trace.showlegend = False  # Avoid duplicate legends
+        fig.add_trace(trace, row=1, col=2)
+
+    # Update layout
+    fig.update_layout(
+        height=400,
+        width=500,
+        showlegend=True,
+        yaxis=dict(range=[0, 1])  # Set y-axis for percentages
+    )
+
+    return fig
 
 def draw_distr(feature, title='', bins='auto', width=11, height=9):
     """
@@ -1822,7 +1921,7 @@ def filterVarImp(X, y, est=DecisionTreeClassifier(random_state=123), metric='roc
     est=LogisticRegression(), metric='roc_auc'
 
     # roc_auc < 0.53
-        # 
+    # 
     Filters and ranks features based on their importance using a specified estimator and evaluation metric.
 
     This function applies `SelectBySingleFeaturePerformance` to assess feature importance by evaluating
