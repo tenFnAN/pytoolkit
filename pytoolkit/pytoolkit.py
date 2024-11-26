@@ -38,8 +38,7 @@ from sklearn.metrics import (
     classification_report
 )
 
-## TODO
-# dopasowanie rozkladu log1p sqrt
+## TODO 
 # status + profnum
 # sns.lmplot 
 # tree_explain(df_users, target='avg_population_per_location_enc', model=xgb.XGBRegressor())
@@ -916,6 +915,24 @@ def kit_cat_rarelabel(data, cat_column, categories_to_keep, replace_with = 'Othe
     data[cat_column] = data[cat_column].apply(lambda x: x if x in categories_to_keep else replace_with)
     return data[cat_column]
 
+def kit_remove_const(data):
+    """
+    Removes columns with only one unique value from a copy of the DataFrame.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame.
+
+    Returns:
+        pd.DataFrame: A new DataFrame without constant columns.
+    """
+    # Create a copy of the DataFrame
+    df_copy = data.copy()
+
+    # Identify columns with only one unique value
+    constant_columns = [col for col in df_copy.columns if df_copy[col].nunique() == 1]
+    
+    # Drop the constant columns from the copy
+    return df_copy.drop(columns=constant_columns)
 ## plot
 def draw_boxplot_num(data, y, title="Box Plot"):
 
@@ -993,8 +1010,8 @@ def draw_boxplot_all(data, ncol = 3):
     )
 
     return p
-    
-def draw_cross_plot(data, x, target, qn_x=10, qn_target = 5, discretize=False):
+
+def draw_cross_plot(data, x, target, qn_x=10, qn_target = 5 ):
     """
     Create a combined plot with a stacked bar plot and a grouped bar count plot.
     If x or y is not categorical and `discretize=True`, they will be binned into quantile-based buckets.
@@ -1037,7 +1054,7 @@ def draw_cross_plot(data, x, target, qn_x=10, qn_target = 5, discretize=False):
     
     if data_[x].dtype not in ['object', 'category', 'string', 'bool']:
         data_[x] = discretize_column(data_, x, qn=qn_x)
-    if data_[target].dtype not in ['object', 'category', 'string', 'bool']:
+    if data_[target].dtype not in ['object', 'category', 'string', 'bool'] and data_[target].nunique() > 2:
         data_[target] = discretize_column(data_, target, qn=qn_target)
  
     # Grouping the data
@@ -1093,33 +1110,55 @@ def draw_cross_plot(data, x, target, qn_x=10, qn_target = 5, discretize=False):
 
     return fig
 
-def draw_distr(feature, title='', bins='auto', width=11, height=9):
+def draw_distr(feature, title='', bins='auto', width=16, height=9, check=False):
     """
     Draws a distribution plot (histogram and boxplot) for the given feature.
+    Optionally generates additional plots for log1p and sqrt transformations.
 
     Args:
         feature (array-like): The data to plot.
         title (str, optional): Title for the plot. Defaults to an empty string.
         bins (str or int, optional): Number of bins or binning strategy for the histogram. Defaults to 'auto'.
-        width (int, optional): The width of the figure in inches. Defaults to 11.
+        width (int, optional): The width of the figure in inches. Defaults to 16.
         height (int, optional): The height of the figure in inches. Defaults to 9.
+        check (bool, optional): If True, generates plots for log1p and sqrt transformations. Defaults to False.
 
     Returns:
         None: The function displays the plot.
     """
-    # Create subplots with the specified figure size
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(width, height))
+    # Handle the case where feature contains negative or zero values for log1p and sqrt
+    feature_log1p = np.log1p(feature) if np.all(feature >= 0) else None
+    feature_sqrt = np.sqrt(feature) if np.all(feature >= 0) else None
 
-    # Plot the histogram
-    sns.histplot(x=feature, bins=bins, ax=ax1)
-    ax1.set_title(f'Distribution of {title}')
+    if check:
+        # Create subplots for original, log1p, and sqrt transformations
+        fig, axes = plt.subplots(2, 3, figsize=(width, height))
+        transformations = [
+            (feature, 'Original'),
+            (feature_log1p, 'Log1p'),
+            (feature_sqrt, 'Sqrt')
+        ]
+        
+        for idx, (data, name) in enumerate(transformations):
+            if data is not None:
+                sns.histplot(x=data, bins=bins, ax=axes[0, idx]) 
+                sns.boxplot(x=data, ax=axes[1, idx])
+                axes[1, idx].set_xlabel(name)
+            else:
+                axes[0, idx].set_title(f'{name} not applicable')
+                axes[0, idx].axis('off')
+                axes[1, idx].axis('off')
 
-    # Plot the boxplot
-    sns.boxplot(x=feature, ax=ax2)
-    ax2.set_xlabel(f' ')
-
-    # Display the plot
-    plt.show()
+        plt.tight_layout()
+        plt.show()
+    else:
+        # Create subplots for original data only
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(width, height))
+        sns.histplot(x=feature, bins=bins, ax=ax1)
+        ax1.set_title(f'Distribution of {title}')
+        sns.boxplot(x=feature, ax=ax2)
+        ax2.set_xlabel(' ')
+        plt.show()
 
 
 def draw_pairplot(data, cols, target, engine = 'ggplot'):
@@ -1365,7 +1404,7 @@ def draw_barplot_cat(data, x, y=None, by=None, kind=None, qn=None, title="Custom
 
     # Add facet wrap if `by` is provided
     if by is not None and kind != 'stacked':
-        plot += facet_wrap(facets=by, ncol=ncol)
+        plot += ggplot.facet_wrap(facets=by, ncol=ncol)
 
     return plot
 
