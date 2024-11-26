@@ -40,9 +40,7 @@ from sklearn.metrics import (
 
 ## TODO 
 # status + profnum
-# sns.lmplot 
-# tree_explain(df_users, target='avg_population_per_location_enc', model=xgb.XGBRegressor())
-
+# sns.lmplot  
 # class CFG:
 #     data_folder = 'data/'
 #     img_dim1 = 20
@@ -1856,6 +1854,37 @@ def importance_tree(ml, colnames, top_n=None):
     plt.show()
 
     return importance
+
+def tree_explain(data, target='score', model=None, type_ = 'clf', top_n=None, **kwargs):
+    """
+    Tworzy model względem zmiennej target i zwraca wykres z istotnością zmiennych.
+    tree_explain(ds[col_cat + ['target']], target = 'target', max_depth = 22)
+    Args:
+        data (pd.DataFrame): Dane wejściowe zawierające cechy i target.
+        target (str): Nazwa zmiennej celu.
+        model: Model drzewa decyzyjnego (np. xgb.XGBRegressor).
+
+    Returns:
+        plt.Figure: Wykres istotności zmiennych.
+    """
+    if model is None and type_ == 'clf' : 
+        from xgboost import XGBClassifier
+        model = XGBClassifier(**kwargs, enable_categorical = True)
+    else:
+        from xgboost import XGBRegressor
+        model = XGBRegressor(**kwargs, enable_categorical = True)
+
+    # Podział na cechy (X) i zmienną celu (y)
+    X = data.drop(columns=[target])
+    y = data[target]
+
+    # Trening modelu
+    model.fit(X, y)
+  
+    # Tworzenie DataFrame z istotnością zmiennych 
+    importance_df = importance_tree(model, X.columns, top_n)
+
+    return importance_df
 
 def draw_ml_residuals(X_val: pd.DataFrame, y_val: pd.core.series.Series, ml):
     """
