@@ -489,9 +489,10 @@ def feat_cor_dot(data_corr, target, width=6, height=5):
  
     return p
 
-def plot_pca_features(data, col_pca, col_features, squish_lwr=0.01, squish_upr=0.99, engine='ggplot', ncol=3):
+def plot_pca_features(data, col_pca, col_features, squish_lwr=0.01, squish_upr=0.99, engine='ggplot', ncol=3, hover_cols=None):
     """
-    Creates a scatter plot of PCA features and scales the feature values for coloring.
+    Creates a scatter plot of PCA features and scales the feature values for coloring, 
+    with optional hover functionality for Plotly.
 
     Args:
     data: pd.DataFrame
@@ -506,19 +507,27 @@ def plot_pca_features(data, col_pca, col_features, squish_lwr=0.01, squish_upr=0
         Upper bound for squishing the feature values to a range.
     engine: str
         Plotting engine to be used ('ggplot' for plotnine, 'plotly' for plotly express).
+    ncol: int
+        Number of columns for faceted plots.
+    hover_cols: list of str, optional
+        Additional columns to display when hovering over points (Plotly only).
     
     Returns:
     plot: ggplot or plotly figure
         The plot object (either from plotnine or plotly).
     """
     # Pivot the features and scale the values
-    data_long = data.melt(id_vars=col_pca, value_vars=col_features, var_name='variable', value_name='value')
+    data_long = data.melt(id_vars=col_pca+hover_cols, value_vars=col_features, var_name='variable', value_name='value')
 
     # Scale the values (grouped by 'variable')
-    data_long['value'] = data_long.groupby('variable')['value'].transform(lambda x: StandardScaler().fit_transform(x.values.reshape(-1, 1)).flatten())
+    data_long['value'] = data_long.groupby('variable')['value'].transform(
+        lambda x: StandardScaler().fit_transform(x.values.reshape(-1, 1)).flatten()
+    )
     
     # Clip the values to the 1st and 99th percentiles within each group
-    data_long['value'] = data_long.groupby('variable')['value'].transform(lambda x: kit_squishToRange(x, 0.01, 0.99))
+    data_long['value'] = data_long.groupby('variable')['value'].transform(
+        lambda x: kit_squishToRange(x, squish_lwr, squish_upr)
+    )
   
     if engine == 'ggplot':
         # Create the plot with plotnine (ggplot2 style)
@@ -530,6 +539,9 @@ def plot_pca_features(data, col_pca, col_features, squish_lwr=0.01, squish_upr=0
             ggplot.facet_wrap('~variable', ncol=ncol)
         )
     elif engine == 'plotly':
+        # Include hover columns if provided
+        hover_data = hover_cols if hover_cols else []
+
         # Create the plot with plotly
         p = px.scatter(
             data_long,
@@ -538,7 +550,7 @@ def plot_pca_features(data, col_pca, col_features, squish_lwr=0.01, squish_upr=0
             color='value',
             facet_col='variable',
             facet_col_wrap=ncol,
-            # color_continuous_scale=px.colors.sequential.RdYlGn[::-1],  # Red to green
+            hover_data=hover_data,  # Add hover columns
             title="PCA Feature Plot"
         )
         # Adjust layout for plotly
