@@ -210,8 +210,12 @@ def status(data):
     # d2 = d2.merge(data2.drop(columns=id_cols, errors='ignore').mode().T.rename(columns={0:'D'}),left_on='variable', right_index=True )
     d_freq = {} 
     for c in data2.columns:
-        stat_freq = _freq_tbl_logic(data2[c], c).loc[0,:]
-        d_freq[c] = {'p_D': stat_freq.iloc[2], 'D': stat_freq.iloc[0]}
+        stat_freq = _freq_tbl_logic(data2[c], c) 
+        if len(stat_freq) >= 1:
+            stat_freq = stat_freq.loc[0,:]
+            d_freq[c] = {'p_D': stat_freq.iloc[2], 'D': stat_freq.iloc[0]}
+        else:
+            d_freq[c] = {'p_D': np.float64(1.0), 'D': np.nan}
     d2 = d2.merge(pd.DataFrame(d_freq).T.assign(p_D = lambda x:round(x['p_D'].astype('float'),2)),left_on='variable', right_index=True )
 
     return d2
@@ -511,7 +515,10 @@ def plot_pca_features(data, col_pca, col_features, squish_lwr=0.01, squish_upr=0
         Number of columns for faceted plots.
     hover_cols: list of str, optional
         Additional columns to display when hovering over points (Plotly only).
-    
+
+    Example:
+    >>> my.plot_pca_features(pcadf, ['pc1', 'pc2'], ['var_pca_master_Dim1'], engine='plotly', hover_cols=['RANK_T', 'TIER_T'])
+
     Returns:
     plot: ggplot or plotly figure
         The plot object (either from plotnine or plotly).
