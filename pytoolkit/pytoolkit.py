@@ -951,6 +951,47 @@ def kit_remove_const(data):
     # Drop the constant columns from the copy
     return df_copy.drop(columns=constant_columns)
 ## plot
+def draw_prop_q(x, by=0.05, plot=True):
+    """
+    Funkcja oblicza kwantyle od 0 do 1 co 'by' (np. 0.05) na podstawie
+    danych x (np. pd.Series, np.array, list) i, opcjonalnie, rysuje
+    wykres tych kwantyli.
+
+    Parametry:
+    ----------
+    x : array-like
+        Dane, z których obliczane są kwantyle (np. list, np.array, pd.Series).
+    by : float, domyślnie 0.05
+        Rozmiar kroku między kolejnymi kwantylami (0 do 1).
+    plot : bool, domyślnie True
+        Czy wyświetlić wykres po obliczeniu kwantyli.
+
+    Zwraca:
+    ----------
+    pd.Series
+        Kwantyle w postaci serii, gdzie indeks to wartości kwantyli,
+        a wartości to obliczone kwantyle.
+    """
+ 
+    s = pd.Series(x).dropna()
+ 
+    q_values = np.arange(0, 1 + by, by)
+    q_values[q_values > 1] = 1   
+ 
+    quantiles = s.quantile(q_values)
+
+    #  
+    if plot:
+        plt.figure(figsize=(6, 4))
+        plt.plot(quantiles.index, quantiles.values, marker='o', linestyle='-')
+        plt.title(' ')
+        plt.xlabel('Percentile')
+        plt.ylabel('Wartość')
+        plt.grid(True)
+        plt.show()
+
+    return quantiles.values
+
 def draw_boxplot_num(data, y, title="Box Plot"):
 
     boxplot = (
