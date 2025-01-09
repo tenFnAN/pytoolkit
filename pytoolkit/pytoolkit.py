@@ -329,7 +329,8 @@ def profiling_num(data):
     d=data[num_vars(data)]
     
     des1=pd.DataFrame({'mean':d.mean().transpose(), 
-                   'std_dev':d.std().transpose()})
+                       'std_dev':d.std().transpose(),
+                       'sum':d.mean().transpose()})
     # variation_coef
     des1['cv']=des1['std_dev']/des1['mean']
     
