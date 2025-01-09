@@ -330,7 +330,7 @@ def profiling_num(data):
     
     des1=pd.DataFrame({'mean':d.mean().transpose(), 
                        'std_dev':d.std().transpose(),
-                       'sum':d.mean().transpose()})
+                       'sum':d.sum().transpose()})
     # variation_coef
     des1['cv']=des1['std_dev']/des1['mean']
     
@@ -345,9 +345,12 @@ def profiling_num(data):
     des_final=des_final.reset_index(drop=True)
     des_final = des_final.merge(d.skew().reset_index().rename(columns={0:'skew'}),left_on='variable', right_on='index' )
 
-    des_final=des_final[['variable', 'mean', 'std_dev','cv', 'skew', 'p_0.0', 'p_0.01', 'p_0.05', 'p_0.25', 'p_0.5', 'p_0.75', 'p_0.95', 'p_0.99', 'p_1.0']]
+    des_final=des_final[['variable', 'mean', 'std_dev', 'sum', 'cv', 'skew', 'p_0.0', 'p_0.01', 'p_0.05', 'p_0.25', 'p_0.5', 'p_0.75', 'p_0.95', 'p_0.99', 'p_1.0']]
     des_final = des_final.rename(columns = {'p_0.0' : 'min', 'p_1.0' : 'max'})
-    return des_final.round(2)
+
+    cols = [col for col in des_final.columns if col != 'sum'] + ['sum']
+
+    return des_final[cols].round(2)
 
 
 def feat_cor(data, method='pearson'):
