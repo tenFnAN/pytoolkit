@@ -1548,7 +1548,7 @@ def draw_count_plot(data, x, y, kind = 'count', title=' ', engine='plotly', widt
     return plot
 
  
-def draw_heatmap_crosstab(data, x, y, value=None, aggfunc='size', normalize=False, title='Heatmap', width=600, height=400, zmax=None, zmin=None):
+def draw_heatmap_crosstab(data, x, y, value=None, aggfunc='size', normalize=False, title='Heatmap', width=600, height=400, zmax=None, zmin=None, round = 3):
     """
     Draws a heatmap plot from a crosstab computed from the raw DataFrame.
 
@@ -1593,7 +1593,7 @@ def draw_heatmap_crosstab(data, x, y, value=None, aggfunc='size', normalize=Fals
 
     # Create the heatmap plot
     plot = px.imshow(
-        crosstab_data.round(2),
+        crosstab_data.round(round),
         labels=dict(x=y, y=x, color="Value" if not normalize else "Proportion"),
         title=title,
         width=width,
