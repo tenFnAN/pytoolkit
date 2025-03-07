@@ -6,6 +6,8 @@ The package was created for learning purposes.
 - pip install -e .
 - pip install git+https://github.com/tenFnAN/pytoolkit
 
+- pip uninstall pytoolkit
+
 ## Usage
 ```
 from pytoolkit.pytoolkit import g

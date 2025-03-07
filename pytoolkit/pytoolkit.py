@@ -2518,10 +2518,10 @@ def perf_distribution(y_true, y_pred, type='med'):
 
     return result
 
-def qa_rgr(data, actual_col, predicted_col, by, time_col = 'ds'):
+def qa_rgr(data, actual_col, pfc, by, time_col = 'ds'):
     """
     Calculate Time Series Regression metric on a DataFrame with grouping (by) column.
-    qa_rgr(holdout_.melt(['y', 'ds']), actual_col='y', predicted_col='value', by='variable')
+    qa_rgr(holdout_.melt(['y', 'ds']), actual_col='y', pfc='value', by='variable')
     """  
     if not isinstance(by, list):
         by = [by]
@@ -2531,7 +2531,7 @@ def qa_rgr(data, actual_col, predicted_col, by, time_col = 'ds'):
         dsmin =  min(group_df[time_col])
         dsmax =  max(group_df[time_col])
         actual_values = group_df[actual_col]
-        predicted_values = group_df[predicted_col]
+        predicted_values = group_df[pfc]
         rmse_group = np.round(np.sqrt(mean_squared_error(actual_values, predicted_values)),2)
         mae_group  = np.round(mean_absolute_error(actual_values, predicted_values),2)  
         minkowski_4 = np.round(minkowski_distance(actual_values, predicted_values, p=4), 2)
