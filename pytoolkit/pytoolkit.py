@@ -35,7 +35,9 @@ from sklearn.metrics import (
     average_precision_score,
     roc_auc_score,
     confusion_matrix,
-    classification_report
+    classification_report,
+    mean_squared_error,
+    mean_absolute_error
 )
 
 ## TODO 
@@ -2403,6 +2405,157 @@ def qa_clf(model, name, y_test, X_test):
         # 'gini' : 2 * auc - 1
       
     }, index=[name]).round(3)
+
+def minkowski_distance(y_true: pd.Series, y_pred: pd.Series, p: int = 4) -> float:
+    return (abs(y_true - y_pred) ** p).sum() ** (1 / p)
+
+def wape(y_true, y_pred):   return np.round(np.abs(y_true - y_pred).sum() / np.abs(y_true).sum(), 3)
+def mape(y_true, y_pred):    return np.round(np.mean(np.abs((y_true - y_pred) / y_true)) * 100,1)
+def perf_qa(y_true, y_pred): return 1 - wape(y_true, y_pred)
+def perf_underest(y_true, y_pred):
+    """
+    Calculates the performance metric for underestimation in predictions.
+
+    This function computes the proportion of the total error that comes from underestimation, i.e.,
+    when the true values (`y_true`) are greater than the predicted values (`y_pred`).
+
+    Args:
+        y_true (np.array or pd.Series): The actual values (ground truth).
+        y_pred (np.array or pd.Series): The predicted values.
+
+    Returns:
+        float: A ratio representing the proportion of the total error that comes from underestimation.
+               The value is rounded to 3 decimal places. If the total error is 0, the function returns 0.
+
+    Formula:
+        Underestimation Proportion = (Sum of underestimation errors) / (Sum of absolute errors)
+
+    Steps:
+        1. Create a mask to identify where `y_true` is greater than `y_pred` (underestimation cases).
+        2. Compute the sum of errors for underestimation cases.
+        3. Compute the sum of absolute errors for all predictions.
+        4. Return the ratio of underestimation error to total error, rounded to 3 decimal places.
+
+    Example:
+        y_true = np.array([100, 150, 200, 250])
+        y_pred = np.array([110, 140, 190, 240])
+        perf_underest(y_true, y_pred)  # Output: 0.333
+
+    Notes:
+        - This metric helps evaluate how much of the prediction error is due to underestimating the actual values.
+    """
+    # Create a mask for underestimation cases
+    mask = y_true > y_pred
+   
+    # Numerator: Sum of the errors where y_true > y_pred (underestimation)
+    numerator = np.sum(y_true[mask] - y_pred[mask])
+   
+    # Denominator: Sum of absolute errors between y_true and y_pred
+    denominator = np.sum(np.abs(y_true - y_pred))
+   
+    # Calculate the result and return it, rounded to 3 decimal places
+    result = round(numerator / denominator, 3) if denominator != 0 else 0
+    return result
+
+def perf_distribution(y_true, y_pred, type='med'):
+    """
+    Calculates the distribution of prediction errors relative to the true values based on the specified type.
+
+    This function computes the ratio of predicted to true values and returns a summary statistic depending
+    on the specified `type`:
+   
+    - 'med': Returns the median of the distribution.
+    - 'avg': Returns the mean of the distribution.
+    - 'weight': Returns the weighted mean of the distribution, weighted by `y_true`.
+
+    Args:
+        y_true (np.array or pd.Series): The actual (true) values.
+        y_pred (np.array or pd.Series): The predicted values.
+        type (str): The type of distribution to calculate. Options are:
+            - 'med': Median of the prediction ratios (default).
+            - 'avg': Mean of the prediction ratios.
+            - 'weight': Weighted mean of the prediction ratios, weighted by `y_true`.
+
+    Returns:
+        float: The calculated performance distribution value, rounded to 2 decimal places.
+
+    Raises:
+        ValueError: If the specified `type` is not one of 'med', 'avg', or 'weight'.
+
+    Example:
+        y_true = np.array([100, 150, 200])
+        y_pred = np.array([110, 140, 195])
+       
+        # Median of the ratios
+        perf_distribution(y_true, y_pred, type='med')  # Output: 0.97
+
+        # Mean of the ratios
+        perf_distribution(y_true, y_pred, type='avg')  # Output: 0.98
+
+        # Weighted mean of the ratios
+        perf_distribution(y_true, y_pred, type='weight')  # Output: 0.98
+
+    Notes:
+        - Ratios are computed as `y_pred / y_true`.
+        - `nan`, `inf`, and `-inf` values are excluded from the 'weight' type calculation.
+        - The function uses `np.nanmean` and `np.nanmedian` to handle missing or infinite values.
+    """
+    # Calculate based on type
+    if type == 'med':
+        # Median of the prediction-to-true value ratios
+        result = round(np.nanmedian(y_pred / y_true), 2)
+    elif type == 'avg':
+        # Mean of the prediction-to-true value ratios
+        result = round(np.nanmean(y_pred / y_true), 2)
+    elif type == 'weight':
+        # Weighted mean of the prediction-to-true value ratios, weighted by y_true
+        d = y_pred / y_true
+        d_m = ~d.isin([np.inf, -np.inf, np.nan])  # Mask to remove invalid values
+        result = round(np.average(d[d_m], weights=y_true[d_m]), 2)
+    else:
+        # Raise error if type is not valid
+        raise ValueError("Invalid type. Use 'med', 'avg', or 'weight'.")
+
+    return result
+
+def qa_rgr(data, actual_col, predicted_col, by, time_col = 'ds'):
+    """
+    Calculate Time Series Regression metric on a DataFrame with grouping (by) column.
+    qa_rgr(holdout_.melt(['y', 'ds']), actual_col='y', predicted_col='value', by='variable')
+    """  
+    if not isinstance(by, list):
+        by = [by]
+ 
+    metrics_values = []
+    for group, group_df in data.groupby(by):
+        dsmin =  min(group_df[time_col])
+        dsmax =  max(group_df[time_col])
+        actual_values = group_df[actual_col]
+        predicted_values = group_df[predicted_col]
+        rmse_group = np.round(np.sqrt(mean_squared_error(actual_values, predicted_values)),2)
+        mae_group  = np.round(mean_absolute_error(actual_values, predicted_values),2)  
+        minkowski_4 = np.round(minkowski_distance(actual_values, predicted_values, p=4), 2)
+        qa_group   = perf_qa(actual_values, predicted_values )
+        underest   = perf_underest(actual_values, predicted_values)
+        distr      = perf_distribution(actual_values, predicted_values,type='med')
+        distrw     = perf_distribution(actual_values, predicted_values,type='weight')
+        qa_mape    = mape(actual_values, predicted_values)
+        metrics_values.append({
+            "group": group,
+            "dsmin": dsmin,
+            "dsmax": dsmax,
+            "real": actual_values.sum(),
+            "pred": np.round(predicted_values.sum()),
+            "qa": qa_group,
+            "underest": underest,
+            "distr": distr,
+            "distrw": distrw,
+            "mae": mae_group,
+            "rmse": rmse_group,
+            "minkowski_dis": minkowski_4,
+            "mape": qa_mape,
+        })
+    return pd.DataFrame(metrics_values)
 
 # ts
 def test_dickeyF(data, alpha=0.05):
