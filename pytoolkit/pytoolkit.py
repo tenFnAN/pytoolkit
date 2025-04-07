@@ -361,7 +361,24 @@ def profiling_num(data):
 
     return des_final[cols].round(2)
 
+def date_ranges(df):
+    """
+    Dla każdej kolumny typu datetime w DataFrame wypisuje zakres dat i rozpiętość.
 
+    Parametry:
+    -----------
+    df : pd.DataFrame
+        Dane wejściowe z kolumnami typu datetime
+    """
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            min_date = df[col].min()
+            max_date = df[col].max()
+            delta = max_date - min_date
+            print(f" Kolumna: '{col}'")
+            print(f"   ➤ Zakres dat: {min_date.date()} → {max_date.date()}")
+            print(f"   ➤ Rozpiętość: {delta.days} dni\n")
+            
 def feat_cor(data, method='pearson'):
     """
     Calcuate the correlations among all numeric features. Non-numeric are excluded since it uses the `corr` pandas function.
