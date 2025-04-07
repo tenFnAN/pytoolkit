@@ -53,6 +53,13 @@ from sklearn.metrics import (
 #     bsize = 16
 #     BATCH_SIZE = 1024
 
+# - grouped transformer:
+# https://koaning.github.io/scikit-lego/user-guide/meta-models/
+# X_tfm_grp = GroupedTransformer(
+#     transformer=StandardScaler(),
+#     groups=["sex"]
+# ).fit_transform(df_penguins)
+
 def cols_change(d):  
     d.columns = list(map(''.join, d.columns.values)) 
     return d
@@ -2409,8 +2416,13 @@ def qa_clf(model, name, y_test, X_test):
 def minkowski_distance(y_true: pd.Series, y_pred: pd.Series, p: int = 4) -> float:
     return (abs(y_true - y_pred) ** p).sum() ** (1 / p)
 
-def wape(y_true, y_pred):   return np.round(np.abs(y_true - y_pred).sum() / np.abs(y_true).sum(), 3)
-def mape(y_true, y_pred):    return np.round(np.mean(np.abs((y_true - y_pred) / y_true)) * 100,1)
+def wape(y_true, y_pred):
+    return np.round(np.abs(y_true - y_pred).sum() / np.abs(y_true).sum(), 3)
+def mape(y_true, y_pred): 
+    return np.round(np.mean(np.abs((y_true - y_pred) / y_true)) * 100,1)
+def smape(y_true, y_pred): 
+    return 1/ len(y_true) * np.sum(2 * np.abs(y_pred - y_true) / (np.abs(y_true) + np.abs(y_pred)))
+
 def perf_qa(y_true, y_pred): return 1 - wape(y_true, y_pred)
 def perf_underest(y_true, y_pred):
     """
@@ -2540,6 +2552,7 @@ def qa_rgr(data, actual_col, pfc, by, time_col = 'ds'):
         distr      = perf_distribution(actual_values, predicted_values,type='med')
         distrw     = perf_distribution(actual_values, predicted_values,type='weight')
         qa_mape    = mape(actual_values, predicted_values)
+        smape_group = smape(actual_values, predicted_values ) 
         metrics_values.append({
             "group": group,
             "dsmin": dsmin,
@@ -2552,8 +2565,9 @@ def qa_rgr(data, actual_col, pfc, by, time_col = 'ds'):
             "distrw": distrw,
             "mae": mae_group,
             "rmse": rmse_group,
-            "minkowski_dis": minkowski_4,
+            "mink": minkowski_4, # minkowski_dis
             "mape": qa_mape,
+            "smape": smape_group,
         })
     return pd.DataFrame(metrics_values)
 
