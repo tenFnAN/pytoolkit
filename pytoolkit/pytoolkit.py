@@ -2552,7 +2552,7 @@ def qa_rgr(data, actual_col, pfc, by, time_col = 'ds'):
         distr      = perf_distribution(actual_values, predicted_values,type='med')
         distrw     = perf_distribution(actual_values, predicted_values,type='weight')
         qa_mape    = mape(actual_values, predicted_values)
-        smape_group = smape(actual_values, predicted_values ) 
+        smape_group = np.round(smape(actual_values, predicted_values ),3) 
         metrics_values.append({
             "group": group,
             "dsmin": dsmin,
