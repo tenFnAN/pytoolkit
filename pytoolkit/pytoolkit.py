@@ -2165,7 +2165,7 @@ def draw_hparam_correlation(study):
                 data[c] = pd.qcut(round(data[c], 2), q=4)
                 data[c] = data[c].cat.rename_categories(lambda x: f"({round(x.left, 3)}, {round(x.right, 3)}]")
             except Exception as e:
-                logger.warning(f"Warning: Failed to bin {c} using pd.qcut due to: {e}. Keeping original values.")
+                print(f"Warning: Failed to bin {c} using pd.qcut due to: {e}. Keeping original values.")
 
     # Melt data for boxplots
     df_melted = data.melt(id_vars=["score"], value_vars=cols_param, var_name="parameter", value_name="value")
