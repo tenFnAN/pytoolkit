@@ -2045,6 +2045,51 @@ def draw_ml_learning_curve(model, title, X, y, ylim=None, cv=None, scoring = 'ro
     
     return p 
 
+def draw_calibration_plot(y_true, y_pred_prob, bucket_size=0.05, min_bucket_count=10, title="Calibration Plot"):
+    """
+    calibration_plot(y_true=y_test, y_pred_prob=model.predict_proba(X_test)[:, 1]
+    """
+    #  
+    df = pd.DataFrame({
+        'y_true': y_true,
+        'y_pred': y_pred_prob
+    })
+    df['bucket'] = (df['y_pred'] // bucket_size) * bucket_size + bucket_size / 2
+
+    # Agregacja:  
+    cdf = df.groupby('bucket', as_index=False).agg(
+        actual_mean=('y_true', 'mean'),
+        count=('y_true', 'count')
+    )
+
+    # 
+    cdf = cdf[cdf['count'] > min_bucket_count]
+
+    # plot
+    chart_df = pd.DataFrame({
+        "actuals": cdf['actual_mean'],
+        "predicted": cdf['bucket'],
+        "expected": cdf['bucket'],  # idealna kalibracja
+    })
+
+    fig = px.line(
+        data_frame=chart_df,
+        x="predicted",
+        y=["actuals", "expected"],
+        markers=True,
+        template="plotly_dark"
+    )
+
+    fig.update_layout(
+        title={"text": title, "y": 0.95, "x": 0.5},
+        xaxis_title="Predicted Probability",
+        yaxis_title="Actual Probability",
+        font=dict(size=15),
+        legend_title_text=""
+    )
+
+    return fig
+
 def draw_hparam_gridsearch(data, cols_target = 'mean_test_score', cols_param = None, ncol = 3):
 
     if cols_param is None:
@@ -2068,6 +2113,87 @@ def draw_hparam_gridsearch(data, cols_target = 'mean_test_score', cols_param = N
         ggplot.facet_wrap('parameter', scales='free', ncol=ncol) +
         ggplot.theme_bw())
     return p
+
+def draw_hparam_correlation(study):
+    """
+    Plots hyperparameter performance    
+    """
+    def stringify_transform(value):
+        if isinstance(value, list) and len(value) > 0:
+            return " + ".join(type(v).__name__ for v in value)
+        return str(value)
+    def compute_sort_key(x): 
+        try:
+            return pd.Interval(x).left
+        except:
+            try:
+                return float(x)
+            except:
+                return str(x)
+    # Convert Optuna study to DataFrame
+    data = study.trials_dataframe(attrs=("value", "params"))
+    data = data.rename(columns={"value": "score"}).rename(columns=lambda x: x.replace("params_", ""))
+    #
+    # data['target_transform'] = data['target_transform'].apply(stringify_transform)
+    # Identify parameter columns
+    cols_param = [col for col in data.columns if col not in ["iter", "score"]]
+
+    # Remove columns with only one unique value
+    cols_param = [
+        c for c in cols_param
+        if data[c].apply(lambda x: tuple(x) if isinstance(x, list) else x).nunique() > 1
+    ]
+
+    # Identify column types
+    numeric_cols = [c for c in cols_param if pd.api.types.is_numeric_dtype(data[c])]
+    object_cols = [c for c in cols_param if pd.api.types.is_object_dtype(data[c])]
+
+    # Compute correlation for numeric and boolean parameters
+    corr_series = data[numeric_cols + ["score"]].corr()["score"].drop("score").round(3)
+
+    # Assign NaN to object parameters
+    for col in object_cols:
+        corr_series[col] = pd.NA
+
+    # Sort parameters by absolute correlation value (ignoring NaN)
+    sorted_params = corr_series.abs().dropna().sort_values(ascending=False).index.tolist()
+
+    # Bin continuous numeric variables with >=8 unique values into quartiles
+    for c in numeric_cols:
+        if data[c].nunique() >= 8:
+            try:
+                data[c] = pd.qcut(round(data[c], 2), q=4)
+                data[c] = data[c].cat.rename_categories(lambda x: f"({round(x.left, 3)}, {round(x.right, 3)}]")
+            except Exception as e:
+                logger.warning(f"Warning: Failed to bin {c} using pd.qcut due to: {e}. Keeping original values.")
+
+    # Melt data for boxplots
+    df_melted = data.melt(id_vars=["score"], value_vars=cols_param, var_name="parameter", value_name="value")
+
+    # Reorder melted DataFrame based on sorted parameters
+    if sorted_params and object_cols:
+        df_melted["parameter"] = pd.Categorical(
+            df_melted["parameter"], categories=sorted_params + object_cols, ordered=True
+        )
+
+    df_melted['value_str'] = df_melted['value'].astype(str)
+    df_melted['sort_key'] = (
+        df_melted
+        .groupby('parameter')['value_str']
+        .transform(lambda col: col.map(compute_sort_key))
+    )
+    df_melted_sorted = df_melted.sort_values(['parameter', 'sort_key'])
+    # Create FacetGrid with boxplots
+    g = sns.FacetGrid(df_melted_sorted, col="parameter", col_wrap=3, sharex=False, sharey=True)
+    g.map(sns.boxplot, "value_str", "score", order=None)
+    g.set_titles("{col_name}")
+    g.set(xlabel=None)
+
+    # Reduce X-axis text size and rotate labels for readability
+    for ax in g.axes.flat:
+        plt.setp(ax.get_xticklabels(), fontsize=7, rotation=45, ha="right")
+ 
+    return g
 
 ## FEATENG
 
