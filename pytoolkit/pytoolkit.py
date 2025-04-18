@@ -2673,46 +2673,62 @@ def perf_distribution(y_true, y_pred, type='med'):
 
     return result
 
-def qa_rgr(data, actual_col, pfc, by, time_col = 'ds'):
+def qa_rgr(data, actual_col, pfc, by, time_col='ds'):
     """
-    Calculate Time Series Regression metric on a DataFrame with grouping (by) column.
-    qa_rgr(holdout_.melt(['y', 'ds']), actual_col='y', pfc='value', by='variable')
-    """  
+    Evaluate regression metrics by group, with separate columns for each group key.
+
+    Parameters:
+    -----------
+    data : pd.DataFrame
+        Input DataFrame containing actual and predicted values.
+    actual_col : str
+        Name of the column with actual values.
+    pfc : str
+        Name of the column with predicted values.
+    by : str or list of str
+        Column(s) to group by.
+    time_col : str, default='ds'
+        Name of the datetime column.
+
+    Returns:
+    --------
+    pd.DataFrame
+        DataFrame with metrics and separate columns for grouping variables.
+    """
+
     if not isinstance(by, list):
         by = [by]
- 
-    metrics_values = []
-    for group, group_df in data.groupby(by):
-        dsmin =  min(group_df[time_col])
-        dsmax =  max(group_df[time_col])
-        actual_values = group_df[actual_col]
-        predicted_values = group_df[pfc]
-        rmse_group = np.round(np.sqrt(mean_squared_error(actual_values, predicted_values)),2)
-        mae_group  = np.round(mean_absolute_error(actual_values, predicted_values),2)  
-        minkowski_4 = np.round(minkowski_distance(actual_values, predicted_values, p=4), 2)
-        qa_group   = perf_qa(actual_values, predicted_values )
-        underest   = perf_underest(actual_values, predicted_values)
-        distr      = perf_distribution(actual_values, predicted_values,type='med')
-        distrw     = perf_distribution(actual_values, predicted_values,type='weight')
-        qa_mape    = mape(actual_values, predicted_values)
-        smape_group = np.round(smape(actual_values, predicted_values ),3) 
-        metrics_values.append({
-            "group": group,
-            "dsmin": dsmin,
-            "dsmax": dsmax,
-            "real": actual_values.sum(),
-            "pred": np.round(predicted_values.sum()),
-            "qa": qa_group,
-            "underest": underest,
-            "distr": distr,
-            "distrw": distrw,
-            "mae": mae_group,
-            "rmse": rmse_group,
-            "mink": minkowski_4, # minkowski_dis
-            "mape": qa_mape,
-            "smape": smape_group,
-        })
-    return pd.DataFrame(metrics_values)
+
+    results = []
+
+    for group_vals, group_df in data.groupby(by):
+        # Always return group_vals as tuple
+        group_vals = group_vals if isinstance(group_vals, tuple) else (group_vals,)
+
+        actual = group_df[actual_col]
+        pred = group_df[pfc]
+
+        # One dict with group keys and metrics
+        row = {
+            **dict(zip(by, group_vals)),
+            "dsmin": group_df[time_col].min(),
+            "dsmax": group_df[time_col].max(),
+            "real": actual.sum(),
+            "pred": np.round(pred.sum(), 0),
+            "qa": perf_qa(actual, pred),
+            "underest": perf_underest(actual, pred),
+            "distr": perf_distribution(actual, pred, type='med'),
+            "distrw": perf_distribution(actual, pred, type='weight'),
+            "mae": np.round(mean_absolute_error(actual, pred), 2),
+            "rmse": np.round(np.sqrt(mean_squared_error(actual, pred)), 2),
+            "mink": np.round(minkowski_distance(actual, pred, p=4), 2),
+            "mape": mape(actual, pred),
+            "smape": np.round(smape(actual, pred), 3)
+        }
+
+        results.append(row)
+
+    return pd.DataFrame(results)
 
 # ts
 def test_dickeyF(data, alpha=0.05):
