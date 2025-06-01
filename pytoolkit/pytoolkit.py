@@ -2045,31 +2045,41 @@ def draw_ml_learning_curve(model, title, X, y, ylim=None, cv=None, scoring = 'ro
     
     return p 
 
-def draw_calibration_plot(y_true, y_pred_prob, bucket_size=0.05, min_bucket_count=10, title="Calibration Plot"):
+def draw_calibration_plot(
+    y_true, 
+    y_pred_prob, 
+    bucket_size=0.05, 
+    min_bucket_count=10, 
+    title="Calibration Plot", 
+    fix_axes_range=True
+):
     """
-    calibration_plot(y_true=y_test, y_pred_prob=model.predict_proba(X_test)[:, 1]
+    Draws a calibration plot with predicted vs actual probabilities.
+
+    Parameters:
+    - y_true: array-like of shape (n_samples,)
+    - y_pred_prob: array-like of shape (n_samples,)
+    - bucket_size: float, width of buckets used for binning predicted probabilities
+    - min_bucket_count: int, minimum number of samples per bucket to include in plot
+    - title: str, title of the plot
+    - fix_axes_range: bool, if True sets x and y axis range to [0, 1]
     """
-    #  
     df = pd.DataFrame({
         'y_true': y_true,
         'y_pred': y_pred_prob
     })
     df['bucket'] = (df['y_pred'] // bucket_size) * bucket_size + bucket_size / 2
 
-    # Agregacja:  
     cdf = df.groupby('bucket', as_index=False).agg(
         actual_mean=('y_true', 'mean'),
         count=('y_true', 'count')
     )
-
-    # 
     cdf = cdf[cdf['count'] > min_bucket_count]
 
-    # plot
     chart_df = pd.DataFrame({
         "actuals": cdf['actual_mean'],
         "predicted": cdf['bucket'],
-        "expected": cdf['bucket'],  # idealna kalibracja
+        "expected": cdf['bucket'],
     })
 
     fig = px.line(
@@ -2087,6 +2097,10 @@ def draw_calibration_plot(y_true, y_pred_prob, bucket_size=0.05, min_bucket_coun
         font=dict(size=15),
         legend_title_text=""
     )
+
+    if fix_axes_range:
+        fig.update_xaxes(range=[0, 1])
+        fig.update_yaxes(range=[0, 1])
 
     return fig
 
