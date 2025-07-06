@@ -1112,6 +1112,26 @@ def draw_boxplot_all(data, ncol = 3):
 
     return p
 
+def draw_boxplot_variation(df, x, y, hue, width=16, palette="PRGn", showfliers=False, rotation=90):
+    """
+    Rysuje wykres boxplot dla podanych zmiennych i DataFrame.
+    
+    Args:
+        df (pd.DataFrame): DataFrame z danymi.
+        x (str): Nazwa kolumny do osi X.
+        y (str): Nazwa kolumny do osi Y.
+        hue (str): Nazwa kolumny do grupowania (kolory).
+        width (int): Szerokość wykresu w calach. Default: 16.
+        palette (str): Paleta kolorów seaborn. Default: 'PRGn'.
+        showfliers (bool): Czy pokazywać outliery. Default: False.
+        rotation (int): Rotacja etykiet osi X. Default: 90.
+    """
+    plt.figure(figsize=(width, 6))
+    ax = sns.boxplot(x=x, y=y, hue=hue, data=df, palette=palette, showfliers=showfliers)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=rotation)
+    plt.tight_layout()
+    plt.show()
+
 def draw_cross_plot(data, x, target, qn_x=10, qn_target = 5 ):
     """
     Create a combined plot with a stacked bar plot and a grouped bar count plot.
