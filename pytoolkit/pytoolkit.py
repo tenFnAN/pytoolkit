@@ -379,6 +379,19 @@ def date_ranges(df):
             print(f"   ➤ Zakres dat: {min_date.date()} → {max_date.date()}")
             print(f"   ➤ Rozpiętość: {delta.days} dni\n")
             
+def columns_df_compare(df1, df2):
+    """
+    Porównuje nazwy kolumn w dwóch DataFrame'ach i wypisuje różnice.
+    """
+    cols1 = set(df1.columns)
+    cols2 = set(df2.columns)
+    
+    only_in_df1 = cols1 - cols2
+    only_in_df2 = cols2 - cols1 
+ 
+    print("🔴 Tylko w df1:", sorted(only_in_df1))
+    print("🔵 Tylko w df2:", sorted(only_in_df2))
+  
 def feat_cor(data, method='pearson'):
     """
     Calcuate the correlations among all numeric features. Non-numeric are excluded since it uses the `corr` pandas function.
@@ -2055,7 +2068,7 @@ def draw_calibration_plot(
 ):
     """
     Draws a calibration plot with predicted vs actual probabilities.
-
+    Porównuje przewidywane prawdopodobieństwa do rzeczywistych proporcji.
     Parameters:
     - y_true: array-like of shape (n_samples,)
     - y_pred_prob: array-like of shape (n_samples,)
