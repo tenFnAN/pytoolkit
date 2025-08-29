@@ -2659,66 +2659,71 @@ def perf_underest(y_true, y_pred):
     result = round(numerator / denominator, 3) if denominator != 0 else 0
     return result
 
-def perf_distribution(y_true, y_pred, type='med'):
+
+def perf_distribution(y_true, y_pred, kind='med', *, eps=0.0, on_zero='nan'):
     """
-    Calculates the distribution of prediction errors relative to the true values based on the specified type.
+    Compute a performance distribution metric based on the ratio y_pred / y_true.
 
-    This function computes the ratio of predicted to true values and returns a summary statistic depending
-    on the specified `type`:
-   
-    - 'med': Returns the median of the distribution.
-    - 'avg': Returns the mean of the distribution.
-    - 'weight': Returns the weighted mean of the distribution, weighted by `y_true`.
+    Parameters
+    ----------
+    y_true : array-like
+        Ground truth (actual) values.
+    y_pred : array-like
+        Predicted values.
+    kind : {'med', 'avg', 'weight'}, default='med'
+        - 'med' : Median of the ratios y_pred / y_true.
+        - 'avg' : Mean of the ratios y_pred / y_true.
+        - 'weight' : Weighted mean of the ratios, using y_true as weights.
+    eps : float, default=0.0
+        Small constant added to the denominator to avoid division by zero.
+        If 0.0, ratios for y_true == 0 will be set to NaN instead.
+    on_zero : {'nan', 'unweighted', 'zero'} or float, default='nan'
+        Fallback strategy when `kind='weight'` and the sum of weights is zero:
+        - 'nan'        : Return NaN.
+        - 'unweighted' : Use the unweighted mean of the ratios.
+        - 'zero'       : Return 0.0.
+        - float        : Return the provided constant.
 
-    Args:
-        y_true (np.array or pd.Series): The actual (true) values.
-        y_pred (np.array or pd.Series): The predicted values.
-        type (str): The type of distribution to calculate. Options are:
-            - 'med': Median of the prediction ratios (default).
-            - 'avg': Mean of the prediction ratios.
-            - 'weight': Weighted mean of the prediction ratios, weighted by `y_true`.
+    Returns
+    -------
+    float
+        The computed performance distribution metric.
 
-    Returns:
-        float: The calculated performance distribution value, rounded to 2 decimal places.
-
-    Raises:
-        ValueError: If the specified `type` is not one of 'med', 'avg', or 'weight'.
-
-    Example:
-        y_true = np.array([100, 150, 200])
-        y_pred = np.array([110, 140, 195])
-       
-        # Median of the ratios
-        perf_distribution(y_true, y_pred, type='med')  # Output: 0.97
-
-        # Mean of the ratios
-        perf_distribution(y_true, y_pred, type='avg')  # Output: 0.98
-
-        # Weighted mean of the ratios
-        perf_distribution(y_true, y_pred, type='weight')  # Output: 0.98
-
-    Notes:
-        - Ratios are computed as `y_pred / y_true`.
-        - `nan`, `inf`, and `-inf` values are excluded from the 'weight' type calculation.
-        - The function uses `np.nanmean` and `np.nanmedian` to handle missing or infinite values.
+    Raises
+    ------
+    ValueError
+        If `kind` is not one of {'med', 'avg', 'weight'}.
     """
-    # Calculate based on type
-    if type == 'med':
-        # Median of the prediction-to-true value ratios
-        result = round(np.nanmedian(y_pred / y_true), 2)
-    elif type == 'avg':
-        # Mean of the prediction-to-true value ratios
-        result = round(np.nanmean(y_pred / y_true), 2)
-    elif type == 'weight':
-        # Weighted mean of the prediction-to-true value ratios, weighted by y_true
-        d = y_pred / y_true
-        d_m = ~d.isin([np.inf, -np.inf, np.nan])  # Mask to remove invalid values
-        result = round(np.average(d[d_m], weights=y_true[d_m]), 2)
+    y_true = pd.Series(y_true).astype(float)
+    y_pred = pd.Series(y_pred).astype(float)
+
+    if eps > 0:
+        ratio = y_pred / (y_true + eps)
     else:
-        # Raise error if type is not valid
-        raise ValueError("Invalid type. Use 'med', 'avg', or 'weight'.")
+        # bez eps – ustaw NaN tam, gdzie y_true == 0
+        ratio = np.divide(y_pred, y_true, out=np.full_like(y_pred, np.nan, dtype=float), where=y_true != 0)
 
-    return result
+    valid = np.isfinite(ratio)
+
+    if kind == 'med':
+        return float(np.nanmedian(ratio[valid]))
+    elif kind == 'avg':
+        return float(np.nanmean(ratio[valid]))
+    elif kind == 'weight':
+        weights = y_true[valid]
+        if float(weights.sum()) == 0.0:
+            if on_zero == 'nan':
+                return float('nan')
+            elif on_zero == 'unweighted':
+                return float(np.nanmean(ratio[valid]))
+            elif on_zero == 'zero':
+                return 0.0
+            else:
+                # zakładamy, że to liczba
+                return float(on_zero)
+        return float(np.average(ratio[valid], weights=weights))
+    else:
+        raise ValueError("Invalid kind. Use 'med', 'avg', or 'weight'.")
 
 def qa_rgr(data, actual_col, pfc, by, time_col='ds'):
     """
@@ -2764,8 +2769,8 @@ def qa_rgr(data, actual_col, pfc, by, time_col='ds'):
             "pred": np.round(pred.sum(), 0),
             "qa": perf_qa(actual, pred),
             "underest": perf_underest(actual, pred),
-            "distr": perf_distribution(actual, pred, type='med'),
-            "distrw": perf_distribution(actual, pred, type='weight'),
+            "distr": perf_distribution(actual, pred, kind='med'),
+            "distrw": perf_distribution(actual, pred, kind='weight'),
             "mae": np.round(mean_absolute_error(actual, pred), 2),
             "rmse": np.round(np.sqrt(mean_squared_error(actual, pred)), 2),
             "mink": np.round(minkowski_distance(actual, pred, p=4), 2),
