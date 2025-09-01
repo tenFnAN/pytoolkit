@@ -2661,6 +2661,7 @@ def perf_underest(y_true, y_pred):
 
 
 def perf_distribution(y_true, y_pred, kind='med', *, eps=0.0, on_zero='nan'):
+
     """
     Compute a performance distribution metric based on the ratio y_pred / y_true.
 
@@ -2687,7 +2688,7 @@ def perf_distribution(y_true, y_pred, kind='med', *, eps=0.0, on_zero='nan'):
     Returns
     -------
     float
-        The computed performance distribution metric.
+        The computed performance distribution metric, rounded to 2 decimal places.
 
     Raises
     ------
@@ -2706,24 +2707,27 @@ def perf_distribution(y_true, y_pred, kind='med', *, eps=0.0, on_zero='nan'):
     valid = np.isfinite(ratio)
 
     if kind == 'med':
-        return float(np.nanmedian(ratio[valid]))
+        result = np.nanmedian(ratio[valid])
     elif kind == 'avg':
-        return float(np.nanmean(ratio[valid]))
+        result = np.nanmean(ratio[valid])
     elif kind == 'weight':
         weights = y_true[valid]
         if float(weights.sum()) == 0.0:
             if on_zero == 'nan':
                 return float('nan')
             elif on_zero == 'unweighted':
-                return float(np.nanmean(ratio[valid]))
+                result = np.nanmean(ratio[valid])
             elif on_zero == 'zero':
-                return 0.0
+                result = 0.0
             else:
                 # zakładamy, że to liczba
-                return float(on_zero)
-        return float(np.average(ratio[valid], weights=weights))
+                result = on_zero
+        else:
+            result = np.average(ratio[valid], weights=weights)
     else:
         raise ValueError("Invalid kind. Use 'med', 'avg', or 'weight'.")
+
+    return round(float(result), 2)
 
 def qa_rgr(data, actual_col, pfc, by, time_col='ds'):
     """
